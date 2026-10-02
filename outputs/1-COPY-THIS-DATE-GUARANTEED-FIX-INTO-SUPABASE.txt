@@ -1,0 +1,17 @@
+-- AES FC date + guaranteed signup safety update
+-- Paste this into Supabase SQL Editor and click Run.
+-- This does NOT delete signups, results, photos, or player names.
+
+alter table public.aesfc_games
+add column if not exists signup_opens_at timestamptz;
+
+alter table public.aesfc_regulars
+add column if not exists guaranteed_signup boolean not null default false;
+
+-- Stop the old default behavior from keeping these organizers permanently enabled.
+-- After running this, use Admin > Regular player list to check only the people
+-- who should receive automatic guaranteed spots.
+update public.aesfc_regulars
+set guaranteed_signup = false
+where full_name in ('Igor Sadovoi', 'Miro Bandalo', 'Dino Vučić', 'Michael Freer');
+

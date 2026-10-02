@@ -1,0 +1,17 @@
+create table if not exists public.aesfc_tracker_drafts (
+  game_date date primary key,
+  draft_data jsonb not null default '{}'::jsonb,
+  is_finished boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.aesfc_tracker_drafts enable row level security;
+
+drop policy if exists aesfc_tracker_drafts_public_access on public.aesfc_tracker_drafts;
+
+create policy aesfc_tracker_drafts_public_access
+on public.aesfc_tracker_drafts
+for all
+to anon
+using (true)
+with check (true);

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">AES FC placeholder football photo 1</title>
+  <desc id="desc">Illustrated football pitch placeholder.</desc>
+  <rect width="1200" height="900" fill="#126b3a"/>
+  <path d="M0 250c190-80 330-75 520 0s340 78 680 5v645H0z" fill="#0f5d33"/>
+  <g fill="none" stroke="#e8f2e7" stroke-width="12" opacity=".9">
+    <rect x="110" y="120" width="980" height="660"/>
+    <line x1="600" y1="120" x2="600" y2="780"/>
+    <circle cx="600" cy="450" r="105"/>
+    <rect x="110" y="310" width="140" height="280"/>
+    <rect x="950" y="310" width="140" height="280"/>
+  </g>
+  <circle cx="606" cy="452" r="48" fill="#f2c14e"/>
+  <text x="80" y="835" fill="#fff" font-family="Arial, sans-serif" font-size="58" font-weight="800">Put real AES FC photos in /public/photos</text>
+</svg>

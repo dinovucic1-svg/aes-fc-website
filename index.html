@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AES FC Private Signup</title>
+    <meta name="description" content="Private weekly football signup for AES FC in Split.">
+    <link rel="stylesheet" href="styles.css?v=20260930c">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="checker-strip" aria-hidden="true"></div>
+      <a class="brand" href="#signupForm" aria-label="AES FC signup form">
+        <span class="crest"><img src="public/aes-fc-logo.png" alt="AES FC logo"></span>
+        <span>
+          <strong>AES FC</strong>
+          <small>Active Expats (&amp; Locals) in Split Football Club</small>
+        </span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#signupForm">Signup</a>
+        <a href="#results">Results</a>
+        <a href="#media">Media</a>
+        <a href="#admin">Admin</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" id="signup">
+        <div class="hero-media">
+          <img id="heroSlide" src="public/photos/aes-placeholder-1.svg" alt="AES FC football photo">
+        </div>
+        <div class="hero-content">
+          <h1>AES FC Private Signup</h1>
+          <p class="hero-subtitle">Active Expats (&amp; Locals) in Split Football Club</p>
+          <div class="match-strip">
+            <div>
+              <span>Next Game</span>
+              <strong id="gameDate">Loading...</strong>
+            </div>
+            <div>
+              <span>Time</span>
+              <strong id="gameTime">9:00 PM - 10:00 PM</strong>
+            </div>
+            <div>
+              <span>Location</span>
+              <strong><a id="gameLocation" href="https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8" target="_blank" rel="noreferrer">NK Bili As ADB Pitch</a></strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="notice-band">
+        <div class="notice">
+          <h2 id="rulesTitle">Before You Sign Up</h2>
+          <div id="rulesText"></div>
+        </div>
+      </section>
+
+      <section class="signup-layout">
+        <form class="panel signup-form" id="signupForm">
+          <div class="section-title">
+            <h2>Sign up</h2>
+          </div>
+          <label id="gameSelectWrap" class="game-select-wrap hidden">Game
+            <select id="gameSelect" name="game_select"></select>
+          </label>
+          <div class="form-grid">
+            <label>Password<input name="signup_password" type="password" inputmode="numeric" autocomplete="off" required></label>
+            <label>Name
+              <select name="full_name_select" class="player-select"></select>
+            </label>
+            <label id="manualNameWrap" class="hidden">Full name<input name="full_name_manual" autocomplete="name" placeholder="First and last name"></label>
+            <label>Players<input name="player_count" type="number" min="1" max="12" step="1" inputmode="numeric" pattern="[0-9]*" value="1"></label>
+          </div>
+          <label class="responsibility-choice compact-check">
+            <input type="checkbox" name="signup_for_self" checked>
+            I’m signing myself up
+          </label>
+          <div id="responsiblePlayerWrap" class="form-grid hidden">
+            <label>Your name
+              <select name="responsible_player_select" id="responsiblePlayerSelect"></select>
+            </label>
+            <label id="responsibleManualWrap" class="hidden">Your full name<input name="responsible_player_manual" placeholder="First and last name"></label>
+          </div>
+          <p id="signupPriorityNote" class="form-note"></p>
+          <div id="extraPlayersWrap" class="hidden extra-player-fields"></div>
+          <p id="responsibilityWarning" class="warning hidden">You are responsible for anyone you sign up. Please include their full names and update the admins if plans change.</p>
+          <button class="primary" type="submit">Sign up</button>
+          <p id="signupMessage" class="form-message" role="status"></p>
+          <div id="calendarActions" class="calendar-actions hidden"></div>
+        </form>
+
+        <details class="panel cancel-form cancel-drawer">
+          <summary>Cancel signup</summary>
+          <form id="cancelSignupForm">
+            <div class="form-grid">
+              <label>Signup password<input name="cancel_password" type="password" inputmode="numeric" autocomplete="off" required></label>
+              <label>Your name
+                <select name="cancel_signup_id" id="cancelSignupSelect" required></select>
+              </label>
+            </div>
+            <button class="secondary" type="submit">Cancel my signup</button>
+            <p id="cancelSignupMessage" class="form-message" role="status"></p>
+          </form>
+        </details>
+
+        <aside class="panel lists-panel">
+          <div class="section-title">
+            <h2>This week’s players</h2>
+            <p id="openSignupCount" class="compact-game-summary">Loading...</p>
+            <p id="listGameSummary" class="compact-game-summary hidden"></p>
+          </div>
+          <label id="listGameSelectWrap" class="game-select-wrap live-list-select hidden">
+            <select id="listGameSelect"></select>
+          </label>
+          <div class="status-banner" id="sheetStatus">Checking signup status...</div>
+          <div class="list-block">
+            <h3>Playing <span id="playingCount">0</span>/12</h3>
+            <ol id="playingList" class="signup-list"></ol>
+          </div>
+          <div class="list-block">
+            <h3>Subs <span id="subsCount">0</span></h3>
+            <ol id="subsList" class="signup-list"></ol>
+          </div>
+        </aside>
+      </section>
+
+      <section id="results" class="content-section results-section">
+        <div class="section-title results-title-row">
+          <div>
+            <h2>Match Results</h2>
+          </div>
+          <label class="result-month-control">Month
+            <select id="resultsMonthSelect"></select>
+          </label>
+        </div>
+        <div id="recentResults" class="results-grid"></div>
+        <div class="stats-panel">
+          <div class="section-title">
+            <div>
+              <h2>Player Stats</h2>
+            </div>
+          </div>
+          <div id="playerStatsTable" class="stats-table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="media" class="content-section media-section">
+        <div class="section-title">
+          <h2>Photos</h2>
+        </div>
+        <div class="photo-carousel" aria-label="AES FC photo slideshow">
+          <button id="photoPrev" class="photo-nav" type="button" aria-label="Previous photo">‹</button>
+          <div id="photoGrid" class="photo-track"></div>
+          <button id="photoNext" class="photo-nav" type="button" aria-label="Next photo">›</button>
+        </div>
+      </section>
+
+      <section id="admin" class="admin-section">
+        <div class="panel admin-panel">
+          <div class="section-title">
+            <h2>Admin dashboard</h2>
+          </div>
+          <form id="adminLogin" class="admin-login">
+            <label>Admin password<input name="password" type="password" autocomplete="current-password" required></label>
+            <button class="secondary" type="submit">Open admin</button>
+          </form>
+          <div id="adminTools" class="hidden">
+            <div class="admin-actions">
+              <button class="secondary" id="refreshAdmin" type="button">Refresh dashboard</button>
+              <button class="secondary" id="logoutAdmin" type="button">Log out</button>
+            </div>
+            <div id="adminCurrentGame" class="admin-current-game"></div>
+            <div class="admin-accordion">
+              <details class="admin-drawer">
+                <summary>Live game tracker</summary>
+                <div class="tracker-launch">
+                  <p>Open a scoring screen for the current game. Pick both teams before tracking starts.</p>
+                  <button class="secondary" id="openTracker" type="button">Open live tracker</button>
+                </div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Add/edit match results</summary>
+                <details class="admin-subdrawer">
+                  <summary>Publish new result</summary>
+                  <form id="resultForm" class="result-form">
+                    <details class="form-subdrawer">
+                      <summary>Match details</summary>
+                      <label>Game date<input name="game_date" type="date" required></label>
+                      <div class="score-grid">
+                        <label>Side 1 score<input name="team_a_score" type="number" min="0" step="1" inputmode="numeric" pattern="[0-9]*" required></label>
+                        <label>Side 2 score<input name="team_b_score" type="number" min="0" step="1" inputmode="numeric" pattern="[0-9]*" required></label>
+                      </div>
+                      <div class="form-grid result-extra-fields">
+                        <label>Side 1 team photo<input name="team_a_photo_file" type="file" accept="image/*"></label>
+                        <label>Side 2 team photo<input name="team_b_photo_file" type="file" accept="image/*"></label>
+                      </div>
+                    </details>
+                    <details class="form-subdrawer">
+                      <summary>Side 1 players and stats</summary>
+                      <div id="teamAPlayers" class="team-player-selects"></div>
+                    </details>
+                    <details class="form-subdrawer">
+                      <summary>Side 2 players and stats</summary>
+                      <div id="teamBPlayers" class="team-player-selects"></div>
+                    </details>
+                    <details class="flow-drawer">
+                      <summary>Flow of the match</summary>
+                      <div id="resultFlowEditor" class="flow-editor"></div>
+                    </details>
+                    <button class="secondary" type="submit">Add result</button>
+                  </form>
+                </details>
+                <details class="admin-subdrawer">
+                  <summary>Edit past result</summary>
+                  <div id="adminResults" class="admin-results"></div>
+                </details>
+              </details>
+              <details class="admin-drawer">
+                <summary>Player of the Month graphic</summary>
+                <div class="admin-potm-tool">
+                  <label>Month
+                    <select id="adminPlayerMonthSelect"></select>
+                  </label>
+                  <button class="secondary" type="button" data-admin-player-month-graphic>Create graphic</button>
+                </div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Monthly summary</summary>
+                <div class="admin-monthly-tool">
+                  <div class="admin-monthly-actions">
+                    <label>Month
+                      <select id="adminMonthlySummarySelect"></select>
+                    </label>
+                    <button class="secondary" type="button" data-download-monthly-summary>Download CSV</button>
+                  </div>
+                  <div id="adminMonthlySummary" class="monthly-summary"></div>
+                </div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Players signed up</summary>
+                <div id="adminSignups" class="admin-table-wrap"></div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Recent cancellations</summary>
+                <div id="adminCancellations" class="admin-table-wrap"></div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Edit match dates</summary>
+                <details class="admin-subdrawer">
+                  <summary>Edit match details</summary>
+                  <form id="gameForm" class="game-form">
+                    <label>Game date<input name="game_date" type="date" required></label>
+                    <label>Start time<input name="start_time" type="time" required></label>
+                    <label>End time<input name="end_time" type="time" required></label>
+                    <label>Signup opens<input name="signup_opens_at" type="datetime-local" required></label>
+                    <label class="toggle-row"><input name="signup_open_now" type="checkbox"> Open signup immediately when saved</label>
+                    <label class="toggle-row"><input name="guest_delay_24h" type="checkbox"> Guests wait 24 hours before they can sign up</label>
+                    <label class="toggle-row"><input name="is_recurring" type="checkbox"> Recurring every week</label>
+                    <label>Location name<input name="location_name" required></label>
+                    <label>Location link<input name="location_url" type="url" required></label>
+                    <button class="secondary" type="submit">Save game details</button>
+                  </form>
+                </details>
+                <details class="admin-subdrawer">
+                  <summary>Add another match</summary>
+                  <form id="newGameForm" class="game-form">
+                    <label>Game date<input name="game_date" type="date" required></label>
+                    <label>Start time<input name="start_time" type="time" value="21:00" required></label>
+                    <label>End time<input name="end_time" type="time" value="22:00" required></label>
+                    <label>Signup opens<input name="signup_opens_at" type="datetime-local" required></label>
+                    <label class="toggle-row"><input name="signup_open_now" type="checkbox"> Open signup immediately when saved</label>
+                    <label class="toggle-row"><input name="guest_delay_24h" type="checkbox"> Guests wait 24 hours before they can sign up</label>
+                    <label class="toggle-row"><input name="is_recurring" type="checkbox"> Recurring every week</label>
+                    <label>Location name<input name="location_name" value="NK Bili As ADB Pitch" required></label>
+                    <label>Location link<input name="location_url" type="url" value="https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8" required></label>
+                    <button class="secondary" type="submit">Add game</button>
+                  </form>
+                </details>
+                <div class="admin-subtitle">Upcoming games</div>
+                <div id="adminGamesList" class="admin-games-list"></div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Edit description text</summary>
+                <form id="settingsForm" class="settings-form">
+                  <label>Rules title<input name="rules_title" required></label>
+                  <label>Rules text<textarea name="rules_text" rows="10" required></textarea></label>
+                  <button class="secondary" type="submit">Save text</button>
+                </form>
+              </details>
+              <details class="admin-drawer">
+                <summary>Regular player list</summary>
+                <form id="regularForm" class="regular-form">
+                  <label>Add regular player<input name="regular_name" placeholder="Full name"></label>
+                  <label>Nationality<input name="regular_nationality" placeholder="Croatia"></label>
+                  <button class="secondary" type="submit">Add name</button>
+                </form>
+                <div id="adminRegulars" class="admin-regulars"></div>
+                <div class="admin-subtitle">Player strengths & weaknesses</div>
+                <p class="admin-help">Open a player profile below to set nationality plus strengths and weaknesses.</p>
+                <form id="profileForm" class="regular-form">
+                  <label>Player name<input name="profile_name" placeholder="Full name"></label>
+                  <label>Nationality<input name="profile_nationality" placeholder="Croatia"></label>
+                  <button class="secondary" type="submit">Save profile</button>
+                </form>
+                <div id="adminProfiles" class="admin-regulars"></div>
+              </details>
+              <details class="admin-drawer">
+                <summary>Add/remove photos</summary>
+                <form id="photoForm" class="photo-form">
+                  <label>Photo title<input name="title" placeholder="Wednesday game"></label>
+                  <label>Photo path or URL<input name="url" placeholder="public/photos/your-photo.jpg"></label>
+                  <label>Or upload a small photo<input name="file" type="file" accept="image/*"></label>
+                  <label>Caption<input name="caption" placeholder="Optional caption"></label>
+                  <button class="secondary" type="submit">Add photo</button>
+                </form>
+                <div id="adminPhotos" class="admin-photos"></div>
+              </details>
+            </div>
+          </div>
+          <p id="adminMessage" class="form-message" role="status"></p>
+        </div>
+      </section>
+    </main>
+
+    <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Photo preview">
+      <button id="closeLightbox" type="button" aria-label="Close photo preview">×</button>
+      <img id="lightboxImage" alt="">
+      <p id="lightboxCaption"></p>
+    </div>
+
+    <div id="liveToast" class="live-toast hidden" role="status" aria-live="polite"></div>
+
+    <div id="liveTracker" class="tracker-shell hidden" role="dialog" aria-modal="true" aria-label="Live Game Tracker">
+      <div class="tracker-panel">
+        <header class="tracker-header">
+          <div>
+            <p class="eyebrow">Live Game Tracker</p>
+            <h2 id="trackerGameTitle">Current game</h2>
+          </div>
+          <button id="closeTracker" class="icon-button" type="button">Close</button>
+        </header>
+
+        <section id="trackerSetup" class="tracker-setup">
+          <div class="tracker-team-card">
+            <h3>Side 1</h3>
+            <div id="trackerTeamA" class="tracker-team-list"></div>
+          </div>
+          <div class="tracker-team-card">
+            <h3>Side 2</h3>
+            <div id="trackerTeamB" class="tracker-team-list"></div>
+          </div>
+          <p id="trackerSetupMessage" class="form-message" role="status"></p>
+          <button id="startTrackerGame" class="primary" type="button">Start tracking</button>
+        </section>
+
+        <section id="trackerActive" class="tracker-active hidden">
+          <div class="tracker-scoreboard">
+            <div><span>Side 1</span><strong id="trackerScoreA">0</strong></div>
+            <b>–</b>
+            <div><span>Side 2</span><strong id="trackerScoreB">0</strong></div>
+          </div>
+          <div class="tracker-goal-buttons">
+            <button class="primary" type="button" data-tracker-goal="a">Goal Side 1</button>
+            <button class="primary" type="button" data-tracker-goal="b">Goal Side 2</button>
+          </div>
+          <div id="trackerGoalForm" class="tracker-goal-form hidden">
+            <h3 id="trackerGoalTitle">Goal</h3>
+            <p class="tracker-step-label">Scorer</p>
+            <div id="trackerScorerButtons" class="tracker-player-buttons"></div>
+            <p class="tracker-step-label">Assist</p>
+            <div id="trackerAssistButtons" class="tracker-player-buttons"></div>
+            <div class="tracker-inline-actions">
+              <button class="secondary" id="saveTrackerGoal" type="button">Save goal</button>
+              <button class="secondary" id="cancelTrackerGoal" type="button">Cancel</button>
+            </div>
+          </div>
+          <div id="trackerMainActions" class="tracker-inline-actions">
+            <button class="secondary" id="undoTrackerGoal" type="button">Undo last goal</button>
+            <button class="secondary" id="finishTrackerGame" type="button">Finish & publish result</button>
+          </div>
+          <div id="trackerEvents" class="tracker-events"></div>
+          <p id="trackerMessage" class="form-message" role="status"></p>
+          <p id="trackerSaveStatus" class="tracker-save-status" role="status"></p>
+        </section>
+      </div>
+    </div>
+
+    <script src="config.js?v=20260930c"></script>
+    <script src="app.js?v=20260930c"></script>
+  </body>
+</html>

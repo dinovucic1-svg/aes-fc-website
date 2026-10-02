@@ -1,0 +1,105 @@
+alter table public.aesfc_regulars add column if not exists nationality text not null default '';
+alter table public.aesfc_signups add column if not exists nationality text not null default '';
+alter table public.aesfc_games add column if not exists is_recurring boolean not null default true;
+alter table public.aesfc_games add column if not exists guest_delay_hours int not null default 24;
+
+create table if not exists public.aesfc_player_profiles (
+  id uuid primary key default gen_random_uuid(),
+  full_name text not null unique,
+  nationality text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table public.aesfc_player_profiles enable row level security;
+
+drop policy if exists aesfc_player_profiles_public_access on public.aesfc_player_profiles;
+
+create policy aesfc_player_profiles_public_access
+on public.aesfc_player_profiles
+for all
+to anon
+using (true)
+with check (true);
+
+update public.aesfc_regulars set nationality = 'Argentina' where full_name in ('Agustin Fontanilla', 'Diego Fuentes Rogosich', 'Seb Beltramone');
+update public.aesfc_regulars set nationality = 'Australia' where full_name in ('Oscar Narvaez');
+update public.aesfc_regulars set nationality = 'Belarus' where full_name in ('Mikita Hrutsa');
+update public.aesfc_regulars set nationality = 'Canada' where full_name in ('Anthony Derro');
+update public.aesfc_regulars set nationality = 'Chile' where full_name in ('Lucho Cvitanić');
+update public.aesfc_regulars set nationality = 'Croatia' where full_name in ('Amar Musić', 'Anđelo Šetka', 'Dino Vučić', 'Ivan Nuić', 'Ivan Nujić', 'Lovre Rogulj', 'Luka Marasović', 'Luka Primorac', 'Luka Zovko', 'Maks Jurić', 'Mario Prižmić', 'Mate Parlov', 'Miro Bandalo', 'Mislav Penović', 'Mislav Penovic', 'Nicholas Skific', 'Tomislav Pranjić', 'Tomislav Radić', 'Vito Pauletić', 'Vojko Mladinić');
+update public.aesfc_regulars set nationality = 'United Kingdom' where full_name in ('Emanuel Andjelic', 'George Penn', 'Liam Wallace', 'Michael Freer');
+update public.aesfc_regulars set nationality = 'France' where full_name in ('Flo Psaïla', 'Leo Jacqueline');
+update public.aesfc_regulars set nationality = 'Germany' where full_name in ('Wladi', 'Wladi Kraus');
+update public.aesfc_regulars set nationality = 'Israel' where full_name in ('Ilya Gurman');
+update public.aesfc_regulars set nationality = 'Italy' where full_name in ('Simone Bianconi');
+update public.aesfc_regulars set nationality = 'New Zealand' where full_name in ('Nick Hathaway');
+update public.aesfc_regulars set nationality = 'North Macedonia' where full_name in ('Predrag Lazarevski');
+update public.aesfc_regulars set nationality = 'Romania' where full_name in ('Ionut Copoiu');
+update public.aesfc_regulars set nationality = 'Russia' where full_name in ('Igor Sadovoi', 'Max Lipanov');
+update public.aesfc_regulars set nationality = 'Ukraine' where full_name in ('Andrii Frolov');
+update public.aesfc_regulars set nationality = 'USA' where full_name in ('Dax Schwartz', 'Matt Moyers', 'Niko Antunovich');
+
+update public.aesfc_signups as signup
+set nationality = regular.nationality
+from public.aesfc_regulars as regular
+where coalesce(signup.nationality, '') = ''
+  and lower(trim(signup.first_name || ' ' || signup.last_name)) = lower(trim(regular.full_name))
+  and coalesce(regular.nationality, '') <> '';
+
+insert into public.aesfc_player_profiles (full_name, nationality)
+select full_name, nationality
+from public.aesfc_regulars
+where coalesce(nationality, '') <> ''
+on conflict (full_name) do update
+set nationality = excluded.nationality;
+
+insert into public.aesfc_player_profiles (full_name, nationality)
+values
+  ('Agustin Fontanilla', 'Argentina'),
+  ('Diego Fuentes Rogosich', 'Argentina'),
+  ('Seb Beltramone', 'Argentina'),
+  ('Oscar Narvaez', 'Australia'),
+  ('Mikita Hrutsa', 'Belarus'),
+  ('Anthony Derro', 'Canada'),
+  ('Lucho Cvitanić', 'Chile'),
+  ('Amar Musić', 'Croatia'),
+  ('Anđelo Šetka', 'Croatia'),
+  ('Dino Vučić', 'Croatia'),
+  ('Ivan Nuić', 'Croatia'),
+  ('Ivan Nujić', 'Croatia'),
+  ('Lovre Rogulj', 'Croatia'),
+  ('Luka Marasović', 'Croatia'),
+  ('Luka Primorac', 'Croatia'),
+  ('Luka Zovko', 'Croatia'),
+  ('Maks Jurić', 'Croatia'),
+  ('Mario Prižmić', 'Croatia'),
+  ('Mate Parlov', 'Croatia'),
+  ('Miro Bandalo', 'Croatia'),
+  ('Mislav Penović', 'Croatia'),
+  ('Mislav Penovic', 'Croatia'),
+  ('Nicholas Skific', 'Croatia'),
+  ('Tomislav Pranjić', 'Croatia'),
+  ('Tomislav Radić', 'Croatia'),
+  ('Vito Pauletić', 'Croatia'),
+  ('Vojko Mladinić', 'Croatia'),
+  ('Emanuel Andjelic', 'United Kingdom'),
+  ('George Penn', 'United Kingdom'),
+  ('Liam Wallace', 'United Kingdom'),
+  ('Michael Freer', 'United Kingdom'),
+  ('Flo Psaïla', 'France'),
+  ('Leo Jacqueline', 'France'),
+  ('Wladi', 'Germany'),
+  ('Wladi Kraus', 'Germany'),
+  ('Ilya Gurman', 'Israel'),
+  ('Simone Bianconi', 'Italy'),
+  ('Nick Hathaway', 'New Zealand'),
+  ('Predrag Lazarevski', 'North Macedonia'),
+  ('Ionut Copoiu', 'Romania'),
+  ('Igor Sadovoi', 'Russia'),
+  ('Max Lipanov', 'Russia'),
+  ('Andrii Frolov', 'Ukraine'),
+  ('Dax Schwartz', 'USA'),
+  ('Matt Moyers', 'USA'),
+  ('Niko Antunovich', 'USA')
+on conflict (full_name) do update
+set nationality = excluded.nationality;

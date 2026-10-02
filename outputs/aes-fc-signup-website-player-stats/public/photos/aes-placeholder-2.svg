@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">AES FC placeholder football photo 2</title>
+  <desc id="desc">Illustrated nighttime football pitch placeholder.</desc>
+  <rect width="1200" height="900" fill="#163326"/>
+  <circle cx="200" cy="145" r="92" fill="#f2c14e"/>
+  <circle cx="970" cy="180" r="70" fill="#d9eef8"/>
+  <rect x="0" y="520" width="1200" height="380" fill="#126b3a"/>
+  <g fill="none" stroke="#e8f2e7" stroke-width="10" opacity=".9">
+    <path d="M120 830 600 525l480 305"/>
+    <path d="M280 830 600 600l320 230"/>
+    <line x1="600" y1="525" x2="600" y2="900"/>
+  </g>
+  <text x="84" y="438" fill="#fff" font-family="Arial, sans-serif" font-size="74" font-weight="800">Wednesday 9 PM</text>
+  <text x="84" y="500" fill="#d9eef8" font-family="Arial, sans-serif" font-size="38" font-weight="700">NK Bili As ADB Pitch</text>
+</svg>
