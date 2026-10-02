@@ -175,6 +175,14 @@
             <div id="adminCurrentGame" class="admin-current-game"></div>
             <div class="admin-accordion">
               <details class="admin-drawer">
+                <summary>Team Balancer</summary>
+                <div class="team-balancer-tool">
+                  <p class="admin-help">Build two balanced sides from the current Playing list using match performance, recent form, player attributes and past teamups.</p>
+                  <button class="secondary" id="generateBalancedTeams" type="button">Generate balanced teams</button>
+                  <div id="teamBalancerOutput" class="team-balancer-output"></div>
+                </div>
+              </details>
+              <details class="admin-drawer">
                 <summary>Live game tracker</summary>
                 <div class="tracker-launch">
                   <p>Open a scoring screen for the current game. Pick both teams before tracking starts.</p>
@@ -390,5 +398,6 @@
 
     <script src="config.js?v=20260930c"></script>
     <script src="app.js?v=20260930c"></script>
+    <script src="team-balancer.js?v=20261002a"></script>
   </body>
 </html>

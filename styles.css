@@ -2717,3 +2717,16 @@ legend {
 
   section { scroll-margin-top: 126px; }
 }
+
+
+/* Team Balancer v1 */
+.team-balancer-tool { display: grid; gap: 14px; padding-top: 12px; }
+.team-balancer-output { display: grid; gap: 14px; }
+.balancer-card { border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.035); }
+.balancer-card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.balancer-card-head span { font-size: .9rem; opacity: .75; }
+.balancer-teams { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.balancer-teams > div { display: grid; gap: 5px; padding: 10px; border-radius: 10px; background: rgba(0,0,0,.12); }
+.balancer-teams h4 { margin: 0 0 4px; }
+.balancer-teams span { display: block; }
+@media (max-width: 640px) { .balancer-teams { grid-template-columns: 1fr; } }
