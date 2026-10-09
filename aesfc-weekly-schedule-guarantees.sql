@@ -7,6 +7,25 @@ add column if not exists is_active boolean not null default true;
 alter table public.aesfc_games
 add column if not exists game_status text not null default 'active';
 
+create table if not exists public.aesfc_fixture_exceptions (
+  slot_date date primary key,
+  reason text not null default 'manual',
+  replacement_game_id uuid references public.aesfc_games(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.aesfc_fixture_exceptions enable row level security;
+
+drop policy if exists aesfc_fixture_exceptions_public_access on public.aesfc_fixture_exceptions;
+
+create policy aesfc_fixture_exceptions_public_access
+on public.aesfc_fixture_exceptions
+for all
+to anon
+using (true)
+with check (true);
+
 update public.aesfc_regulars
 set guaranteed_games = array['monday', 'wednesday']
 where guaranteed_signup = true
@@ -21,6 +40,14 @@ where game_date = date '2026-10-09'
     game_date >= date '2026-10-09'
     and extract(isodow from game_date)::int = 6
   );
+
+insert into public.aesfc_fixture_exceptions (slot_date, reason, updated_at)
+select game_date, 'removed', now()
+from public.aesfc_games
+where game_status = 'removed'
+on conflict (slot_date) do update
+set reason = excluded.reason,
+    updated_at = excluded.updated_at;
 
 create or replace function public.aesfc_signup_open_for_game(p_game_date date)
 returns timestamptz
@@ -81,38 +108,12 @@ begin
     ) as slots(day_offset, start_time, end_time, location_name, location_url)
   ) target_games
   where game_date >= greatest(local_today, schedule_start)
-  on conflict (game_date) do nothing;
-
-  update public.aesfc_games g
-  set
-    start_time = target_games.start_time,
-    end_time = target_games.end_time,
-    location_name = target_games.location_name,
-    location_url = target_games.location_url,
-    signup_opens_at = public.aesfc_signup_open_for_game(target_games.game_date),
-    is_recurring = true
-  from (
-    select
-      base_monday + (week_offset * 7) + day_offset as game_date,
-      start_time::time,
-      end_time::time,
-      location_name,
-      location_url
-    from generate_series(0, 10) as week_offset
-    cross join (
-      values
-        (0, '20:00', '21:00', 'Bili''s Pitch', 'https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8'),
-        (2, '21:00', '22:00', 'Gusar', 'https://www.google.com/maps/search/?api=1&query=Gusar%20Split'),
-        (4, '20:00', '21:00', 'Gusar', 'https://www.google.com/maps/search/?api=1&query=Gusar%20Split')
-    ) as slots(day_offset, start_time, end_time, location_name, location_url)
-  ) target_games
-  where g.game_date = target_games.game_date
-    and g.game_date >= greatest(local_today, schedule_start)
-    and g.is_active is not false
-    and coalesce(g.game_status, 'active') = 'active'
     and not exists (
-      select 1 from public.aesfc_signups s where s.game_id = g.id
-    );
+      select 1
+      from public.aesfc_fixture_exceptions exception
+      where exception.slot_date = target_games.game_date
+    )
+  on conflict (game_date) do nothing;
 
   insert into public.aesfc_signups (
     game_id,

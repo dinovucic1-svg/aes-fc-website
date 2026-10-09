@@ -120,6 +120,9 @@ const state = {
   regulars: [],
   playerProfiles: [],
   game: null,
+  adminGame: null,
+  adminSignups: [],
+  adminCancelledSignups: [],
   realtimeChannel: null,
   realtimeGameId: null,
   liveToastTimer: null,
@@ -128,6 +131,8 @@ const state = {
   resultsMonth: "",
   regularsDirty: false,
   scheduleDirty: false,
+  savingRegulars: false,
+  savingSchedule: false,
   showAllAdminGames: false,
   signupCountsByGame: {},
   tracker: {
@@ -148,7 +153,8 @@ const state = {
     rules_title: DEFAULT_RULES_TITLE,
     rules_text: DEFAULT_RULES_TEXT
   },
-  adminPassword: sessionStorage.getItem("aes_admin_password") || ""
+  adminPassword: sessionStorage.getItem("aes_admin_password") || "",
+  adminVerified: sessionStorage.getItem("aes_admin_verified") === "true"
 };
 
 const el = (id) => document.getElementById(id);
@@ -169,6 +175,41 @@ function escapeHtml(value = "") {
 
 function requireDb() {
   if (!db) throw new Error("Supabase is not connected yet.");
+}
+
+function usesSupabaseAdminAuth() {
+  return String(cfg.adminAuthMode || "password").toLowerCase() === "supabase";
+}
+
+function hasAdminAccess() {
+  return usesSupabaseAdminAuth()
+    ? state.adminVerified
+    : state.adminPassword === ADMIN_PASSWORD;
+}
+
+function assertAdmin() {
+  if (!hasAdminAccess()) throw new Error(usesSupabaseAdminAuth() ? "Please sign in as an admin." : "Wrong admin password.");
+}
+
+function hasUnsavedAdminEdits() {
+  return Boolean(state.regularsDirty || state.scheduleDirty);
+}
+
+function confirmDiscardUnsavedAdminEdits(action = "continue") {
+  if (!hasUnsavedAdminEdits()) return true;
+  return window.confirm(`You have unsaved admin changes. Discard them and ${action}?`);
+}
+
+function adminGameOrFallback() {
+  return state.adminGame || state.game || getDefaultGameWindow();
+}
+
+function normalizeArray(values = []) {
+  return [...values].filter(Boolean).sort();
+}
+
+function valuesEqual(a, b) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function zagrebParts(date = new Date()) {
@@ -418,6 +459,10 @@ function currentSignupNameSet() {
   return new Set(state.signups.map((signup) => normalizeName(signupFullName(signup))).filter(Boolean));
 }
 
+function adminSignupNameSet() {
+  return new Set((state.adminSignups || []).map((signup) => normalizeName(signupFullName(signup))).filter(Boolean));
+}
+
 function isValidFullName(fullName) {
   return splitFullName(fullName).fullName.split(" ").filter(Boolean).length >= 2;
 }
@@ -505,6 +550,7 @@ async function loadUpcomingGames() {
 async function ensurePermanentRecurringGames(existingGames = []) {
   if (!db) return;
   const existingDates = new Set((existingGames || []).map((game) => String(game.game_date)));
+  const exceptionDates = await loadFixtureExceptionDates();
   const today = zagrebParts().date;
   const scheduleStart = "2026-10-12";
   const targets = [];
@@ -517,6 +563,7 @@ async function ensurePermanentRecurringGames(existingGames = []) {
       const targetDate = addDays(gameDate, index * 7);
       if (slot.last_date && new Date(`${targetDate}T12:00:00Z`) > new Date(`${slot.last_date}T12:00:00Z`)) break;
       if (new Date(`${targetDate}T12:00:00Z`) < new Date(`${scheduleStart}T12:00:00Z`) && targetDate !== "2026-09-30") continue;
+      if (exceptionDates.has(targetDate)) continue;
       if (existingDates.has(targetDate)) continue;
       existingDates.add(targetDate);
       targets.push({
@@ -540,14 +587,40 @@ async function ensurePermanentRecurringGames(existingGames = []) {
   if (error) throw error;
 }
 
+async function loadFixtureExceptionDates() {
+  if (!db) return new Set();
+  try {
+    const { data, error } = await db
+      .from("aesfc_fixture_exceptions")
+      .select("slot_date");
+    if (error) return new Set();
+    return new Set((data || []).map((row) => String(row.slot_date)));
+  } catch {
+    return new Set();
+  }
+}
+
+async function upsertFixtureException(slotDate, reason = "manual", replacementGameId = null) {
+  if (!slotDate || !db) return;
+  const { error } = await db.from("aesfc_fixture_exceptions").upsert({
+    slot_date: slotDate,
+    reason,
+    replacement_game_id: replacementGameId,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "slot_date" });
+  if (error && !/schema cache|relation .* does not exist/i.test(error.message || "")) throw error;
+}
+
+async function clearFixtureException(slotDate) {
+  if (!slotDate || !db) return;
+  const { error } = await db.from("aesfc_fixture_exceptions").delete().eq("slot_date", slotDate);
+  if (error && !/schema cache|relation .* does not exist/i.test(error.message || "")) throw error;
+}
+
 function nextDateForWeekday(fromDate, weekday) {
   const currentDow = isoDowFromDate(fromDate);
   const daysAhead = (weekday - currentDow + 7) % 7;
   return addDays(fromDate, daysAhead);
-}
-
-function assertAdmin() {
-  if (state.adminPassword !== ADMIN_PASSWORD) throw new Error("Wrong admin password.");
 }
 
 async function loadPhotos() {
@@ -1689,7 +1762,7 @@ async function refreshAfterRealtimeChange(messageBuilder) {
   await loadPublicState();
   const playingCount = state.signups.filter((signup) => signup.status === "Playing").length;
   showLiveToast(messageBuilder(playingCount));
-  if (state.adminPassword === ADMIN_PASSWORD && !el("adminTools").classList.contains("hidden")) {
+  if (hasAdminAccess() && !el("adminTools").classList.contains("hidden")) {
     await loadAdmin();
   }
 }
@@ -2107,38 +2180,77 @@ function openLightbox(index) {
 
 async function adminLogin(event) {
   event.preventDefault();
-  state.adminPassword = new FormData(event.currentTarget).get("password");
+  requireDb();
+  const formData = new FormData(event.currentTarget);
   try {
-    assertAdmin();
+    if (usesSupabaseAdminAuth()) {
+      const email = String(formData.get("email") || "").trim();
+      const password = String(formData.get("password") || "");
+      if (!email || !password) throw new Error("Enter your admin email and password.");
+      const { error } = await db.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await verifySupabaseAdminAccess();
+      sessionStorage.setItem("aes_admin_verified", "true");
+      sessionStorage.removeItem("aes_admin_password");
+      state.adminPassword = "";
+    } else {
+      state.adminPassword = String(formData.get("password") || "");
+      assertAdmin();
+      sessionStorage.setItem("aes_admin_password", state.adminPassword);
+      sessionStorage.removeItem("aes_admin_verified");
+    }
     await loadAdmin();
-    sessionStorage.setItem("aes_admin_password", state.adminPassword);
     el("adminTools").classList.remove("hidden");
     setMessage(el("adminMessage"), "Admin dashboard loaded.");
   } catch (error) {
+    state.adminVerified = false;
+    sessionStorage.removeItem("aes_admin_verified");
     setMessage(el("adminMessage"), error.message, true);
   }
 }
 
+async function verifySupabaseAdminAccess() {
+  const { data, error } = await db.rpc("aesfc_is_admin");
+  if (error) throw new Error(`Admin permission check failed: ${error.message}`);
+  if (data !== true) throw new Error("This signed-in user is not listed as an AES FC admin.");
+  state.adminVerified = true;
+}
+
+function renderAdminLoginMode() {
+  const emailWrap = el("adminEmailWrap");
+  if (!emailWrap) return;
+  const supabaseMode = usesSupabaseAdminAuth();
+  emailWrap.classList.toggle("hidden", !supabaseMode);
+  const emailInput = emailWrap.querySelector("input");
+  if (emailInput) emailInput.required = supabaseMode;
+  const passwordLabel = el("adminLogin")?.querySelector("label:not(#adminEmailWrap)");
+  if (passwordLabel) passwordLabel.childNodes[0].textContent = supabaseMode ? "Admin password" : "Admin password";
+}
+
 async function loadAdmin() {
   assertAdmin();
-  if (!state.game) state.game = await getCurrentGame();
+  if (!state.adminGame) state.adminGame = state.game || await getCurrentGame();
   await loadUpcomingGames();
   state.regulars = await loadRegulars();
   await ensureGuaranteedSignupsForUpcomingGames();
-  state.game = state.games.find((game) => String(game.id) === String(state.game?.id) && isGameAvailable(game)) || state.publicGames[0] || state.games.find(isGameAvailable) || state.game;
+  state.adminGame = state.games.find((game) => String(game.id) === String(state.adminGame?.id)) || state.publicGames[0] || state.games.find(isGameAvailable) || state.adminGame;
   state.signupCountsByGame = await loadSignupCountsForGames(state.games);
-  renderAdminGame(state.game);
-  state.signups = state.game?.id ? await loadSignups(state.game.id) : [];
-  state.cancelledSignups = state.game?.id ? await loadCancelledSignups(state.game.id) : [];
+  renderAdminGame(state.adminGame);
+  state.adminSignups = state.adminGame?.id ? await loadSignups(state.adminGame.id) : [];
+  state.adminCancelledSignups = state.adminGame?.id ? await loadCancelledSignups(state.adminGame.id) : [];
   state.photos = await loadPhotos();
   state.settings = await loadSettings();
   state.playerProfiles = await loadPlayerProfiles();
   state.results = await loadResults();
-  renderAdminSignups(state.signups);
-  renderAdminCancellations(state.cancelledSignups);
+  renderAdminSignups(state.adminSignups);
+  renderAdminCancellations(state.adminCancelledSignups);
   renderAdminPhotos(state.photos);
   renderAdminSettings();
-  renderAdminRegulars();
+  if (state.regularsDirty) {
+    setMessage(el("adminMessage"), "Dashboard data refreshed. Unsaved Regulars edits were kept on screen.");
+  } else {
+    renderAdminRegulars();
+  }
   renderAdminProfiles();
   renderResultForm();
   renderAdminResults();
@@ -2163,9 +2275,15 @@ function renderAdminGame(game) {
   const nextGame = state.publicGames[0] || state.games.find(isGameAvailable) || game;
   if (nextGame) {
     const gameStart = new Date(zagrebDateTime(nextGame.game_date, String(nextGame.start_time || "21:00").slice(0, 5)));
-    el("adminCurrentGame").textContent = `Next active signup: ${fmtShortGame.format(gameStart)} · ${formatClock(nextGame.start_time).replace(":00 ", "")}`;
+    const adminStart = game ? new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5))) : gameStart;
+    el("adminCurrentGame").textContent = `Editing: ${fmtShortGame.format(adminStart)} · ${formatClock(game?.start_time || nextGame.start_time).replace(":00 ", "")} · Next active signup: ${fmtShortGame.format(gameStart)}`;
   }
-  renderAdminGamesList();
+  if (state.scheduleDirty) {
+    const note = el("scheduleDirtyNote");
+    if (note) note.textContent = "Unsaved schedule changes kept on screen";
+  } else {
+    renderAdminGamesList();
+  }
 }
 
 function updateSignupOpenMode(form) {
@@ -2175,9 +2293,19 @@ function updateSignupOpenMode(form) {
   form.signup_opens_at.required = !openNow;
 }
 
-function renderAdminGamesList() {
+function collectScheduleDraftRows() {
+  const drafts = new Map();
+  document.querySelectorAll("#adminGamesList [data-game-row]").forEach((row) => {
+    drafts.set(String(row.dataset.gameRow), schedulePayloadFromRow(row));
+  });
+  return drafts;
+}
+
+function renderAdminGamesList(options = {}) {
   const node = el("adminGamesList");
   if (!node) return;
+  const preserveDraft = Boolean(options.preserveDraft);
+  const drafts = preserveDraft ? collectScheduleDraftRows() : new Map();
   const games = state.games || [];
   if (!games.length) {
     node.innerHTML = "<p>No upcoming games found.</p>";
@@ -2198,37 +2326,75 @@ function renderAdminGamesList() {
     <div class="admin-schedule-toolbar">
       <p>Saturday 09:00 Europe/Zagreb opens the following Monday, Wednesday and Friday together.</p>
       <button class="secondary compact" type="button" data-save-schedule disabled>Save schedule changes</button>
+      <span id="scheduleDirtyNote" class="dirty-note">No unsaved changes</span>
     </div>
     ${[...grouped.entries()].map(([weekStart, weekGames]) => `
       <section class="admin-week-group">
         <h4>Week of ${escapeHtml(formatShortResultDate(weekStart))}</h4>
-        ${weekGames.map((game) => renderAdminGameRow(game)).join("")}
+        ${weekGames.map((game) => renderAdminGameRow(game, drafts.get(String(game.id)))).join("")}
       </section>
     `).join("")}
     ${(state.games.length > visibleGames.length) ? `<button class="secondary compact" type="button" data-show-more-games>Show more</button>` : ""}
   `;
-  state.scheduleDirty = false;
+  state.scheduleDirty = preserveDraft && drafts.size ? true : false;
+  if (state.scheduleDirty) markScheduleDirty();
 }
 
-function renderAdminGameRow(game) {
+function renderAdminGameRow(game, draft = null) {
   const count = state.signupCountsByGame?.[game.id] || 0;
   const isActive = isGameAvailable(game);
+  const values = draft || scheduleBaselinePayload(game);
   const status = game.game_status === "removed" ? "Removed" : isActive ? "Active" : "Inactive";
   return `
     <div class="admin-game-row ${isActive ? "" : "inactive"}" data-game-row="${escapeHtml(game.id)}">
-      <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${isActive ? "checked" : ""}> Active</label>
-      <label>Date<input name="schedule_date" type="date" value="${escapeHtml(game.game_date)}"></label>
-      <label>Start<input name="schedule_start" type="time" value="${escapeHtml(String(game.start_time || "21:00").slice(0, 5))}"></label>
-      <label>End<input name="schedule_end" type="time" value="${escapeHtml(String(game.end_time || "22:00").slice(0, 5))}"></label>
-      <label>Venue<input name="schedule_location_name" value="${escapeHtml(game.location_name || "")}"></label>
-      <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(game.location_url || "")}"></label>
+      <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${values.is_active ? "checked" : ""}> Active</label>
+      <label>Date<input name="schedule_date" type="date" value="${escapeHtml(values.game_date)}"></label>
+      <label>Start<input name="schedule_start" type="time" value="${escapeHtml(values.start_time)}"></label>
+      <label>End<input name="schedule_end" type="time" value="${escapeHtml(values.end_time)}"></label>
+      <label>Signup opens<input name="schedule_signup_opens_at" type="datetime-local" value="${escapeHtml(toDatetimeLocalValue(values.signup_opens_at, values.game_date))}"></label>
+      <label>Venue<input name="schedule_location_name" value="${escapeHtml(values.location_name || "")}"></label>
+      <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(values.location_url || "")}"></label>
       <div class="schedule-row-meta">
         <strong>${escapeHtml(status)}</strong>
         <small>${escapeHtml(count ? `${count} signup(s). Deactivating keeps them hidden from public signup until reactivated.` : "No signups yet.")}</small>
       </div>
+      <button class="secondary compact" type="button" data-edit-game="${escapeHtml(game.id)}">Edit workspace</button>
       <button class="icon-button" type="button" data-remove-game="${escapeHtml(game.id)}">Remove</button>
     </div>
   `;
+}
+
+function scheduleBaselinePayload(game = {}) {
+  const active = isGameAvailable(game);
+  const gameDate = String(game.game_date || "");
+  const signupOpens = datetimeLocalToZagreb(toDatetimeLocalValue(game.signup_opens_at || signupOpenForGame(gameDate), gameDate));
+  return {
+    game_date: gameDate,
+    start_time: String(game.start_time || "21:00").slice(0, 5),
+    end_time: String(game.end_time || "22:00").slice(0, 5),
+    location_name: String(game.location_name || ""),
+    location_url: String(game.location_url || ""),
+    signup_opens_at: signupOpens,
+    is_active: active,
+    game_status: active ? "active" : (game.game_status || "skipped"),
+    is_recurring: game.is_recurring !== false
+  };
+}
+
+function schedulePayloadFromRow(row) {
+  const gameDate = row.querySelector("[name='schedule_date']")?.value || "";
+  const active = row.querySelector("[name='schedule_active']")?.checked || false;
+  return {
+    game_date: gameDate,
+    start_time: row.querySelector("[name='schedule_start']")?.value || "",
+    end_time: row.querySelector("[name='schedule_end']")?.value || "",
+    location_name: row.querySelector("[name='schedule_location_name']")?.value.trim() || "",
+    location_url: row.querySelector("[name='schedule_location_url']")?.value.trim() || "",
+    signup_opens_at: datetimeLocalToZagreb(row.querySelector("[name='schedule_signup_opens_at']")?.value) || signupOpenForGame(gameDate),
+    is_active: active,
+    game_status: active ? "active" : "skipped",
+    is_recurring: true
+  };
 }
 
 function applyDefaultSignupOpen(form) {
@@ -2295,7 +2461,7 @@ function renderResultForm() {
   `).join("");
   el("teamAPlayers").innerHTML = selects("team_a");
   el("teamBPlayers").innerHTML = selects("team_b");
-  el("resultForm").game_date.value = state.game?.game_date || new Date().toISOString().slice(0, 10);
+  el("resultForm").game_date.value = state.adminGame?.game_date || state.game?.game_date || new Date().toISOString().slice(0, 10);
   el("resultFlowEditor").innerHTML = renderFlowEditor("game_flow_step");
 }
 
@@ -2520,55 +2686,130 @@ function markRegularsDirty() {
 
 async function saveRegularsBatch() {
   assertAdmin();
+  if (state.savingRegulars) return;
   const rows = [...document.querySelectorAll("#adminRegulars [data-regular-row]")];
-  const failures = [];
-  for (const row of rows) {
-    const id = row.dataset.regularRow;
-    const fullName = splitFullName(row.querySelector("[name='regular_full_name']").value).fullName;
-    const nationality = row.querySelector("[name='regular_nationality']")?.value.trim() || "";
-    const guaranteedGames = selectedGuaranteedGames(row);
-    if (!fullName) {
-      failures.push("A row has no player name.");
-      continue;
-    }
-    const { error } = await db.from("aesfc_regulars").update({
-      full_name: fullName,
-      nationality,
-      guaranteed_signup: guaranteedGames.length > 0,
-      guaranteed_games: guaranteedGames
-    }).eq("id", id);
-    if (error) {
-      failures.push(`${fullName}: ${error.message}`);
-      continue;
-    }
-    await upsertPlayerProfile(fullName, nationality);
+  const drafts = rows.map((row) => ({
+    row,
+    id: row.dataset.regularRow,
+    payload: regularPayloadFromRow(row),
+    baseline: regularBaselinePayload((state.regulars || []).find((regular) => String(regular.id) === String(row.dataset.regularRow)))
+  }));
+  const validation = validateRegularDrafts(drafts);
+  if (validation.length) throw new Error(validation.join(" "));
+  const changed = drafts.filter((draft) => !valuesEqual(draft.payload, draft.baseline));
+  if (!changed.length) {
+    state.regularsDirty = false;
+    renderAdminRegulars();
+    setMessage(el("adminMessage"), "No Regulars changes to save.");
+    return;
   }
-  if (failures.length) throw new Error(`Some regulars were not saved: ${failures.join(" | ")}`);
+  state.savingRegulars = true;
+  const save = document.querySelector("[data-save-regulars]");
+  if (save) save.disabled = true;
+  const failures = [];
+  try {
+    for (const draft of changed) {
+      const { full_name: fullName, nationality, guaranteed_games: guaranteedGames } = draft.payload;
+      const { error } = await db.from("aesfc_regulars").update({
+        full_name: fullName,
+        nationality,
+        guaranteed_signup: guaranteedGames.length > 0,
+        guaranteed_games: guaranteedGames
+      }).eq("id", draft.id);
+      if (error) {
+        failures.push(`${fullName}: ${error.message}`);
+        continue;
+      }
+      await upsertPlayerProfile(fullName, nationality);
+    }
+  } finally {
+    state.savingRegulars = false;
+  }
+  if (failures.length) {
+    state.regularsDirty = true;
+    if (save) save.disabled = false;
+    throw new Error(`Some regulars were not saved: ${failures.join(" | ")}`);
+  }
   state.regulars = await loadRegulars();
   renderAdminRegulars();
   renderPlayerSelectors();
-  setMessage(el("adminMessage"), "Regular player changes saved.");
+  setMessage(el("adminMessage"), `Regular player changes saved (${changed.length} row${changed.length === 1 ? "" : "s"}).`);
+}
+
+function regularPayloadFromRow(row) {
+  const fullName = splitFullName(row.querySelector("[name='regular_full_name']")?.value || "").fullName;
+  const nationality = row.querySelector("[name='regular_nationality']")?.value.trim() || "";
+  return {
+    full_name: fullName,
+    nationality,
+    guaranteed_games: normalizeArray(selectedGuaranteedGames(row)),
+    guaranteed_signup: selectedGuaranteedGames(row).length > 0
+  };
+}
+
+function regularBaselinePayload(regular = {}) {
+  const games = normalizeArray(guaranteedGamesForRegular(regular));
+  return {
+    full_name: splitFullName(regular.full_name || "").fullName,
+    nationality: regular.nationality || "",
+    guaranteed_games: games,
+    guaranteed_signup: games.length > 0
+  };
+}
+
+function validateRegularDrafts(drafts = []) {
+  const errors = [];
+  const seen = new Map();
+  drafts.forEach(({ payload }) => {
+    if (!payload.full_name) errors.push("Every Regulars row needs a player name.");
+    const key = normalizeName(payload.full_name);
+    if (key && seen.has(key)) errors.push(`${payload.full_name} is listed more than once.`);
+    if (key) seen.set(key, true);
+    const invalidGuarantee = payload.guaranteed_games.find((day) => !WEEKLY_GAME_DAYS.some(([key]) => key === day));
+    if (invalidGuarantee) errors.push(`${payload.full_name || "A player"} has an invalid guarantee option: ${invalidGuarantee}.`);
+  });
+  return [...new Set(errors)];
 }
 
 function markScheduleDirty() {
   state.scheduleDirty = true;
   const save = document.querySelector("[data-save-schedule]");
   if (save) save.disabled = false;
+  const note = el("scheduleDirtyNote");
+  if (note) note.textContent = "Unsaved changes";
 }
 
 async function saveScheduleBatch() {
   assertAdmin();
+  if (state.savingSchedule) return;
   const rows = [...document.querySelectorAll("#adminGamesList [data-game-row]")];
+  const drafts = rows.map((row) => {
+    const id = row.dataset.gameRow;
+    const game = (state.games || []).find((item) => String(item.id) === String(id));
+    return {
+      row,
+      id,
+      game,
+      payload: schedulePayloadFromRow(row),
+      baseline: scheduleBaselinePayload(game)
+    };
+  }).filter((draft) => draft.game);
+  const validation = validateScheduleDrafts(drafts);
+  if (validation.length) throw new Error(validation.join(" "));
+  const changed = drafts.filter((draft) => !valuesEqual(draft.payload, draft.baseline));
+  if (!changed.length) {
+    state.scheduleDirty = false;
+    renderAdminGamesList();
+    setMessage(el("adminMessage"), "No schedule changes to save.");
+    return;
+  }
   const failures = [];
-  const impacted = rows
-    .map((row) => {
-      const id = row.dataset.gameRow;
-      const game = (state.games || []).find((item) => String(item.id) === String(id));
-      const count = state.signupCountsByGame?.[id] || 0;
-      const active = row.querySelector("[name='schedule_active']")?.checked || false;
-      return { row, game, count, active };
+  const impacted = changed
+    .map((draft) => {
+      const count = state.signupCountsByGame?.[draft.id] || 0;
+      return { ...draft, count };
     })
-    .filter(({ game, count, active }) => game && count > 0 && isGameAvailable(game) && !active);
+    .filter(({ game, count, payload }) => game && count > 0 && isGameAvailable(game) && !payload.is_active);
   if (impacted.length) {
     const lines = impacted.map(({ game, count }) => {
       const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
@@ -2576,32 +2817,64 @@ async function saveScheduleBatch() {
     });
     if (!doubleConfirm(`Deactivate games with existing signups?\n\n${lines.join("\n")}\n\nThe registrations will be preserved, but hidden from public signup while inactive.`)) return;
   }
-  for (const row of rows) {
-    const id = row.dataset.gameRow;
-    const gameDate = row.querySelector("[name='schedule_date']").value;
-    const active = row.querySelector("[name='schedule_active']")?.checked || false;
-    const payload = {
-      game_date: gameDate,
-      start_time: row.querySelector("[name='schedule_start']").value,
-      end_time: row.querySelector("[name='schedule_end']").value,
-      location_name: row.querySelector("[name='schedule_location_name']").value,
-      location_url: row.querySelector("[name='schedule_location_url']").value,
-      signup_opens_at: signupOpenForGame(gameDate),
-      is_active: active,
-      game_status: active ? "active" : "skipped",
-      is_recurring: true
-    };
-    const { error } = await db.from("aesfc_games").update(payload).eq("id", id);
-    if (error) failures.push(`${gameDate}: ${error.message}`);
+  state.savingSchedule = true;
+  const save = document.querySelector("[data-save-schedule]");
+  if (save) save.disabled = true;
+  try {
+    for (const draft of changed) {
+      const { error } = await db.from("aesfc_games").update(draft.payload).eq("id", draft.id);
+      if (error) {
+        failures.push(`${draft.payload.game_date}: ${error.message}`);
+        continue;
+      }
+      if (draft.baseline.game_date !== draft.payload.game_date) {
+        await upsertFixtureException(draft.baseline.game_date, "moved", draft.id);
+      }
+      if (!draft.payload.is_active || draft.payload.game_status !== "active") {
+        await upsertFixtureException(draft.payload.game_date, draft.payload.game_status || "skipped", draft.id);
+      } else if (draft.baseline.game_date === draft.payload.game_date) {
+        await clearFixtureException(draft.payload.game_date);
+      }
+    }
+  } finally {
+    state.savingSchedule = false;
   }
-  if (failures.length) throw new Error(`Some schedule rows were not saved: ${failures.join(" | ")}`);
+  if (failures.length) {
+    state.scheduleDirty = true;
+    if (save) save.disabled = false;
+    throw new Error(`Some schedule rows were not saved: ${failures.join(" | ")}`);
+  }
   await loadUpcomingGames();
   state.signupCountsByGame = await loadSignupCountsForGames(state.games);
-  state.game = state.publicGames[0] || state.games.find(isGameAvailable) || state.game;
-  renderAdminGame(state.game);
+  state.adminGame = state.games.find((game) => String(game.id) === String(state.adminGame?.id)) || state.publicGames[0] || state.games.find(isGameAvailable) || state.adminGame;
+  state.scheduleDirty = false;
+  renderAdminGame(state.adminGame);
   renderGameSelector();
   renderSheetStatus();
-  setMessage(el("adminMessage"), "Schedule changes saved.");
+  setMessage(el("adminMessage"), `Schedule changes saved (${changed.length} row${changed.length === 1 ? "" : "s"}).`);
+}
+
+function validateScheduleDrafts(drafts = []) {
+  const errors = [];
+  const afterDates = new Map();
+  (state.games || []).forEach((game) => {
+    afterDates.set(String(game.id), String(game.game_date));
+  });
+  drafts.forEach((draft) => afterDates.set(String(draft.id), draft.payload.game_date));
+  const seenDates = new Map();
+  [...afterDates.entries()].forEach(([id, date]) => {
+    if (!date) return;
+    if (seenDates.has(date)) errors.push(`${date} is used by more than one game.`);
+    seenDates.set(date, id);
+  });
+  drafts.forEach(({ payload }) => {
+    if (!payload.game_date) errors.push("Every schedule row needs a date.");
+    if (!payload.start_time || !payload.end_time) errors.push(`${payload.game_date || "A game"} needs start and end times.`);
+    if (payload.start_time && payload.end_time && payload.start_time >= payload.end_time) errors.push(`${payload.game_date} must end after it starts.`);
+    if (!payload.location_name) errors.push(`${payload.game_date || "A game"} needs a venue name.`);
+    if (!payload.location_url) errors.push(`${payload.game_date || "A game"} needs a venue link.`);
+  });
+  return [...new Set(errors)];
 }
 
 function profileTagsFor(profile = {}) {
@@ -2813,15 +3086,15 @@ async function saveGameDetails(event) {
     const { data: saved, error } = await db
       .from("aesfc_games")
       .update(updated)
-      .eq("id", state.game.id)
+      .eq("id", state.adminGame.id)
       .select()
       .single();
     if (error) throw error;
-    state.game = { ...saved, is_open: isGameOpen(saved) };
+    state.adminGame = { ...saved, is_open: isGameOpen(saved) };
     setMessage(el("adminMessage"), "Game details saved.");
     await loadPublicState();
     const selectedGame = (state.games || []).find((game) => String(game.id) === String(saved.id));
-    state.game = { ...(selectedGame || saved), is_open: isGameOpen(selectedGame || saved) };
+    state.adminGame = { ...(selectedGame || saved), is_open: isGameOpen(selectedGame || saved) };
     await loadAdmin();
   } catch (error) {
     setMessage(el("adminMessage"), error.message, true);
@@ -2855,7 +3128,7 @@ async function addGame(event) {
     form.reset();
     setMessage(el("adminMessage"), "Game added. If multiple games are upcoming, players can choose which one to sign up for.");
     await loadPublicState();
-    state.game = { ...saved, is_open: isGameOpen(saved) };
+    state.adminGame = { ...saved, is_open: isGameOpen(saved) };
     await loadAdmin();
   } catch (error) {
     setMessage(el("adminMessage"), error.message, true);
@@ -2883,20 +3156,19 @@ async function removeGame(gameId) {
     })
     .eq("id", gameId);
   if (error) throw error;
+  await upsertFixtureException(game.game_date, "removed", gameId);
   setMessage(el("adminMessage"), "Game removed from public signup. Existing signup data was preserved.");
 }
 
 async function selectAdminGame(gameId) {
   const game = (state.games || []).find((item) => String(item.id) === String(gameId));
   if (!game) throw new Error("Could not find that game.");
-  state.game = { ...game, is_open: isGameOpen(game) };
-  state.signups = await loadSignups(state.game.id);
-  state.cancelledSignups = await loadCancelledSignups(state.game.id);
-  renderAdminGame(state.game);
-  renderAdminSignups(state.signups);
-  renderAdminCancellations(state.cancelledSignups);
-  renderPlayerSelectors();
-  renderCancelSelector();
+  state.adminGame = { ...game, is_open: isGameOpen(game) };
+  state.adminSignups = await loadSignups(state.adminGame.id);
+  state.adminCancelledSignups = await loadCancelledSignups(state.adminGame.id);
+  renderAdminGame(state.adminGame);
+  renderAdminSignups(state.adminSignups);
+  renderAdminCancellations(state.adminCancelledSignups);
   setMessage(el("adminMessage"), "Now editing selected game.");
 }
 
@@ -3069,7 +3341,8 @@ function trackerNames() {
 }
 
 function trackerNameGroups() {
-  const signedUpNames = state.signups
+  const sourceSignups = state.adminGame ? (state.adminSignups || []) : (state.signups || []);
+  const signedUpNames = sourceSignups
     .map((signup) => signupFullName(signup))
     .map((name) => splitFullName(name).fullName)
     .filter(Boolean);
@@ -3090,7 +3363,7 @@ function trackerNameGroups() {
   return { signed, rest, all };
 }
 
-function trackerLocalKey(gameDate = state.tracker.gameDate || state.game?.game_date || "current") {
+function trackerLocalKey(gameDate = state.tracker.gameDate || state.adminGame?.game_date || state.game?.game_date || "current") {
   return `${TRACKER_LOCAL_PREFIX}${gameDate}`;
 }
 
@@ -3128,7 +3401,7 @@ function trackerDraftPayload(status = "active") {
 
 function applyTrackerDraft(draft = {}) {
   state.tracker = {
-    gameDate: draft.gameDate || state.game?.game_date || getDefaultGameWindow().game_date,
+    gameDate: draft.gameDate || state.adminGame?.game_date || state.game?.game_date || getDefaultGameWindow().game_date,
     teamA: Array.isArray(draft.teamA) ? draft.teamA : [],
     teamB: Array.isArray(draft.teamB) ? draft.teamB : [],
     events: Array.isArray(draft.events) ? draft.events : [],
@@ -3278,7 +3551,7 @@ function selectedTrackerName(team, index) {
 }
 
 function trackerGoalMinute() {
-  const game = state.game || getDefaultGameWindow();
+  const game = adminGameOrFallback();
   const gameDate = state.tracker.gameDate || game.game_date;
   const startTime = String(game.start_time || "21:00").slice(0, 5);
   const start = new Date(zagrebDateTime(gameDate, startTime));
@@ -3294,7 +3567,7 @@ function collectTrackerTeam(team) {
 
 async function openTracker() {
   assertAdmin();
-  const game = state.game || getDefaultGameWindow();
+  const game = adminGameOrFallback();
   const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
   el("trackerGameTitle").textContent = `${fmtShortGame.format(gameStart)} · ${formatClock(game.start_time).replace(":00 ", "")}`;
   state.tracker = {
@@ -3506,7 +3779,7 @@ function renderTracker() {
 async function finishTrackerGame() {
   try {
     assertAdmin();
-    const game = state.game || getDefaultGameWindow();
+    const game = adminGameOrFallback();
     if (!state.tracker.teamA.length || !state.tracker.teamB.length) throw new Error("Choose both teams before publishing.");
     if (!window.confirm("Publish this final result and update stats?")) return;
     await saveTrackerDraft("Pre-publish draft saved");
@@ -3545,7 +3818,7 @@ async function finishTrackerGame() {
     await saveTrackerDraft("Finished");
     clearTrackerDraft(game.game_date);
     await loadPublicState();
-    if (state.adminPassword === ADMIN_PASSWORD && !el("adminTools").classList.contains("hidden")) await loadAdmin();
+    if (hasAdminAccess() && !el("adminTools").classList.contains("hidden")) await loadAdmin();
   } catch (error) {
     setMessage(el("trackerMessage"), error.message, true);
   }
@@ -4012,7 +4285,7 @@ async function handleAdminClicks(event) {
     assertAdmin();
     if (showMoreGames) {
       state.showAllAdminGames = true;
-      renderAdminGamesList();
+      renderAdminGamesList({ preserveDraft: true });
       return;
     }
     if (saveRegulars) {
@@ -4117,6 +4390,7 @@ async function handleAdminClicks(event) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderAdminLoginMode();
   document.querySelector("[name='player_count']").addEventListener("input", toggleExtraPlayers);
   document.querySelector("[name='full_name_select']").addEventListener("change", toggleManualName);
   document.querySelector("[name='signup_for_self']").addEventListener("change", toggleResponsiblePlayer);
@@ -4190,6 +4464,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     event.preventDefault();
     event.returnValue = "";
   });
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("a[href]");
+    if (!link || link.target === "_blank") return;
+    if (!hasUnsavedAdminEdits()) return;
+    if (!confirmDiscardUnsavedAdminEdits("leave this page")) event.preventDefault();
+  }, true);
   el("adminResults").addEventListener("change", (event) => {
     if (event.target.matches("[data-saved-result-player-select]")) updateSavedResultManualVisibility();
   });
@@ -4228,9 +4508,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     openTrackerGoal(state.tracker.events[index].team, index);
   });
   el("refreshAdmin").addEventListener("click", loadAdmin);
-  el("logoutAdmin").addEventListener("click", () => {
+  el("logoutAdmin").addEventListener("click", async () => {
+    if (!confirmDiscardUnsavedAdminEdits("log out")) return;
+    if (usesSupabaseAdminAuth() && db) await db.auth.signOut();
     sessionStorage.removeItem("aes_admin_password");
+    sessionStorage.removeItem("aes_admin_verified");
     state.adminPassword = "";
+    state.adminVerified = false;
     el("adminTools").classList.add("hidden");
     setMessage(el("adminMessage"), "Logged out.");
   });

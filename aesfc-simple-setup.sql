@@ -93,6 +93,14 @@ create table if not exists public.aesfc_tracker_drafts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.aesfc_fixture_exceptions (
+  slot_date date primary key,
+  reason text not null default 'manual',
+  replacement_game_id uuid references public.aesfc_games(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.aesfc_signups add column if not exists email text not null default 'not-collected@aesfc.local';
 alter table public.aesfc_signups add column if not exists phone text not null default 'not collected';
 alter table public.aesfc_signups add column if not exists signed_up_by text;
@@ -124,6 +132,7 @@ alter table public.aesfc_regulars enable row level security;
 alter table public.aesfc_player_profiles enable row level security;
 alter table public.aesfc_results enable row level security;
 alter table public.aesfc_tracker_drafts enable row level security;
+alter table public.aesfc_fixture_exceptions enable row level security;
 
 drop policy if exists aesfc_games_public_access on public.aesfc_games;
 drop policy if exists aesfc_signups_public_access on public.aesfc_signups;
@@ -133,6 +142,7 @@ drop policy if exists aesfc_regulars_public_access on public.aesfc_regulars;
 drop policy if exists aesfc_player_profiles_public_access on public.aesfc_player_profiles;
 drop policy if exists aesfc_results_public_access on public.aesfc_results;
 drop policy if exists aesfc_tracker_drafts_public_access on public.aesfc_tracker_drafts;
+drop policy if exists aesfc_fixture_exceptions_public_access on public.aesfc_fixture_exceptions;
 
 create policy aesfc_games_public_access
 on public.aesfc_games
@@ -185,6 +195,13 @@ with check (true);
 
 create policy aesfc_tracker_drafts_public_access
 on public.aesfc_tracker_drafts
+for all
+to anon
+using (true)
+with check (true);
+
+create policy aesfc_fixture_exceptions_public_access
+on public.aesfc_fixture_exceptions
 for all
 to anon
 using (true)
