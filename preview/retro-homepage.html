@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Stage 1 Preview</title>
     <link rel="stylesheet" href="retro-homepage.css">
+    <script src="../config.js"></script>
   </head>
   <body>
     <header class="site-header">
@@ -18,18 +19,38 @@
       <nav aria-label="Preview navigation">
         <a href="#signup-preview">Signup</a>
         <a href="#results-preview">Results</a>
-        <a href="#rankings-preview">Rankings</a>
+        <a href="#gallery-preview">Photos</a>
       </nav>
     </header>
 
     <main>
-      <section class="hero">
-        <div class="hero-art" aria-hidden="true"></div>
-        <div class="hero-copy">
-          <p class="eyebrow">Saturday 9 AM signups</p>
+      <p class="sample-note">Stage 1 design preview · sample data</p>
+
+      <section class="intro" aria-label="AES FC introduction">
+        <div class="intro-copy">
+          <p class="eyebrow">Saturday 09:00 Europe/Zagreb</p>
           <h1>Football in Split.</h1>
           <p>Internationals &amp; locals. Since 2015.</p>
         </div>
+
+        <section class="photo-story" aria-label="AES FC photo slideshow">
+          <div class="slides">
+            <figure class="slide active">
+              <img data-photo-slot="0" src="assets/aesfc-current-photo.jpg" alt="AES FC team photo">
+            </figure>
+            <figure class="slide">
+              <img data-photo-slot="1" src="../public/photos/aes-placeholder-1.svg" alt="AES FC match photo">
+            </figure>
+            <figure class="slide">
+              <img data-photo-slot="2" src="../public/photos/aes-placeholder-2.svg" alt="AES FC evening football photo">
+            </figure>
+          </div>
+          <div class="slideshow-controls" aria-label="Photo controls">
+            <button type="button" data-slide="prev" aria-label="Previous photo">‹</button>
+            <button type="button" data-slide="pause" aria-pressed="false">Pause</button>
+            <button type="button" data-slide="next" aria-label="Next photo">›</button>
+          </div>
+        </section>
       </section>
 
       <section class="fixture-section" aria-label="Sample upcoming games">
@@ -40,18 +61,18 @@
         <div class="fixture-list">
           <button class="fixture active" type="button" aria-pressed="true">
             <span class="fixture-date">Mon 12 Oct</span>
-            <span class="fixture-main">8 PM · Bili’s Pitch</span>
-            <span class="fixture-status open">Open · 8/12</span>
+            <span class="fixture-main">20:00 · Bili’s Pitch</span>
+            <span class="fixture-status open">Open since Sat 09:00 · 8/12</span>
           </button>
           <button class="fixture" type="button">
             <span class="fixture-date">Wed 14 Oct</span>
-            <span class="fixture-main">9 PM · Gusar</span>
-            <span class="fixture-status">Opens Sat 9 AM</span>
+            <span class="fixture-main">21:00 · Gusar</span>
+            <span class="fixture-status">Open since Sat 09:00 · 5/12</span>
           </button>
           <button class="fixture" type="button">
             <span class="fixture-date">Fri 16 Oct</span>
-            <span class="fixture-main">8 PM · Gusar</span>
-            <span class="fixture-status">Opens Sat 9 AM</span>
+            <span class="fixture-main">20:00 · Gusar</span>
+            <span class="fixture-status">Open since Sat 09:00 · 2/12</span>
           </button>
         </div>
       </section>
@@ -59,7 +80,7 @@
       <section id="signup-preview" class="signup-area">
         <aside class="availability" aria-label="Selected game availability">
           <p class="eyebrow">Selected match</p>
-          <h2>Mon 12 Oct · 8 PM</h2>
+          <h2>Monday · 20:00</h2>
           <p>Bili’s Pitch · 8 playing, 4 spots open</p>
         </aside>
 
@@ -82,28 +103,34 @@
           <label class="check-row"><input type="checkbox" checked> I’m signing myself up</label>
           <details class="quiet-drawer">
             <summary>Add guest or more players</summary>
+            <p>Regulars get first access for the selected game when the 24-hour guest delay is on. If you sign up someone else, you’re responsible for confirming they can play.</p>
             <label>Players<input type="number" value="1" min="1"></label>
           </details>
           <button type="button">Sign up</button>
+          <button class="cancel-action" type="button">Cancel signup</button>
+          <details class="rules-drawer">
+            <summary>Signup rules</summary>
+            <p>Keep the link private, use the password from the WhatsApp group, and update your spot early if plans change. Subs are called in list order.</p>
+          </details>
         </form>
 
         <aside class="list-panel">
           <div class="list-title">
             <div>
               <p class="eyebrow">Live list</p>
-              <h2>This week’s players</h2>
+              <h2>Monday’s players</h2>
             </div>
             <strong>8/12</strong>
           </div>
           <ol>
-            <li><span>Dino Vučić</span><em>CRO</em></li>
-            <li><span>Flo Psaïla</span><em>FRA</em></li>
-            <li><span>Igor Sadovoi</span><em>CRO</em></li>
-            <li><span>Michael Freer</span><em>UK</em></li>
-            <li><span>Agustin Fontanilla</span><em>ARG</em></li>
-            <li><span>Oscar Narvaez</span><em>AUS</em></li>
-            <li><span>Vito Pauletić</span><em>CRO</em></li>
-            <li><span>Andrii Frolov</span><em>UKR</em></li>
+            <li><span>Dino Vučić</span><em aria-label="Croatia">🇭🇷</em></li>
+            <li><span>Flo Psaïla</span><em aria-label="France">🇫🇷</em></li>
+            <li><span>Igor Sadovoi</span><em aria-label="Croatia">🇭🇷</em></li>
+            <li><span>Michael Freer</span><em aria-label="United Kingdom">🇬🇧</em></li>
+            <li><span>Agustin Fontanilla</span><em aria-label="Argentina">🇦🇷</em></li>
+            <li><span>Oscar Narvaez</span><em aria-label="Australia">🇦🇺</em></li>
+            <li><span>Vito Pauletić</span><em aria-label="Croatia">🇭🇷</em></li>
+            <li><span>Andrii Frolov</span><em aria-label="Ukraine">🇺🇦</em></li>
           </ol>
           <p class="subs">Subs · No subs yet</p>
         </aside>
@@ -143,6 +170,110 @@
           <button type="button" class="secondary-action">View rankings</button>
         </div>
       </section>
+
+      <section id="gallery-preview" class="gallery-section" aria-label="Photo gallery preview">
+        <div class="section-head">
+          <p class="eyebrow">Photos</p>
+          <h2>From the pitch</h2>
+        </div>
+        <div class="gallery-grid">
+          <figure><img data-gallery-slot="0" src="assets/aesfc-current-photo.jpg" alt="AES FC team photo"><figcaption>Cold March Nights of 2021</figcaption></figure>
+          <figure><img data-gallery-slot="1" src="../public/photos/aes-placeholder-1.svg" alt="AES FC pitch photo"><figcaption>Match night</figcaption></figure>
+          <figure><img data-gallery-slot="2" src="../public/photos/aes-placeholder-2.svg" alt="AES FC evening football photo"><figcaption>Evening football</figcaption></figure>
+        </div>
+      </section>
     </main>
+
+    <script>
+      (() => {
+        const fallbackPhotos = [
+          { title: "Cold March Nights of 2021", url: "assets/aesfc-current-photo.jpg", caption: "Cold March Nights of 2021" },
+          { title: "AES FC match photo", url: "../public/photos/aes-placeholder-1.svg", caption: "Match night" },
+          { title: "AES FC evening football photo", url: "../public/photos/aes-placeholder-2.svg", caption: "Evening football" }
+        ];
+        const normalizeUrl = (url) => {
+          if (!url) return "";
+          if (url.startsWith("data:") || url.startsWith("http") || url.startsWith("../")) return url;
+          return `../${url.replace(/^\\.\\//, "")}`;
+        };
+        const applyPhotos = (photos) => {
+          const selected = photos.length ? photos : fallbackPhotos;
+          document.querySelectorAll("[data-photo-slot]").forEach((img, slot) => {
+            const photo = selected[slot % selected.length];
+            img.src = normalizeUrl(photo.url);
+            img.alt = photo.title || "AES FC football photo";
+          });
+          document.querySelectorAll("[data-gallery-slot]").forEach((img, slot) => {
+            const photo = selected[slot % selected.length];
+            img.src = normalizeUrl(photo.url);
+            img.alt = photo.title || "AES FC football photo";
+            const caption = img.closest("figure")?.querySelector("figcaption");
+            if (caption) caption.textContent = photo.caption || photo.title || "AES FC photo";
+          });
+        };
+
+        const loadLivePhotos = () => new Promise((resolve) => {
+          const cfg = window.AES_CONFIG || {};
+          if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+            resolve(fallbackPhotos);
+            return;
+          }
+          const endpoint = `${cfg.supabaseUrl}/rest/v1/aesfc_photos?select=title,url,caption,sort_order,is_active&is_active=eq.true&order=sort_order.asc`;
+          const request = new XMLHttpRequest();
+          request.open("GET", endpoint);
+          request.setRequestHeader("apikey", cfg.supabaseAnonKey);
+          request.setRequestHeader("Authorization", `Bearer ${cfg.supabaseAnonKey}`);
+          request.onload = () => {
+            if (request.status < 200 || request.status >= 300) {
+              resolve(fallbackPhotos);
+              return;
+            }
+            try {
+              const photos = JSON.parse(request.responseText);
+              resolve(Array.isArray(photos) && photos.length ? photos : fallbackPhotos);
+            } catch {
+              resolve(fallbackPhotos);
+            }
+          };
+          request.onerror = () => resolve(fallbackPhotos);
+          request.send();
+        });
+
+        loadLivePhotos().then(applyPhotos);
+
+        const slides = Array.from(document.querySelectorAll(".slide"));
+        const controls = document.querySelector(".slideshow-controls");
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        let index = 0;
+        let paused = reduceMotion;
+        let timer = null;
+
+        const show = (next) => {
+          index = (next + slides.length) % slides.length;
+          slides.forEach((slide, slideIndex) => slide.classList.toggle("active", slideIndex === index));
+        };
+
+        const restart = () => {
+          window.clearInterval(timer);
+          timer = null;
+          if (!paused && !reduceMotion) timer = window.setInterval(() => show(index + 1), 5200);
+        };
+
+        controls?.addEventListener("click", (event) => {
+          const action = event.target.closest("button")?.dataset.slide;
+          if (!action) return;
+          if (action === "prev") show(index - 1);
+          if (action === "next") show(index + 1);
+          if (action === "pause") {
+            paused = !paused;
+            event.target.textContent = paused ? "Play" : "Pause";
+            event.target.setAttribute("aria-pressed", String(paused));
+          }
+          restart();
+        });
+
+        restart();
+      })();
+    </script>
   </body>
 </html>

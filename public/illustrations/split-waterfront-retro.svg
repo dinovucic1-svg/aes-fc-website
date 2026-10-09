@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Retro Split waterfront illustration</title>
+  <desc id="desc">A restrained navy line illustration of palms, the Split waterfront and a small football.</desc>
+  <rect width="1200" height="360" fill="none"/>
+  <g fill="none" stroke="#0d2c49" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M38 282h1124" stroke-width="9"/>
+    <path d="M160 282v-78m0 0c-34 4-62 20-86 48m86-48c-4-42-22-74-54-96m54 96c16-38 45-63 88-77m-88 77c40 3 76 19 107 49" stroke-width="9"/>
+    <path d="M300 282v-62h46v62m36 0v-88h52v88m42 0v-118h56v118m-188-91h220" stroke-width="8"/>
+    <path d="M528 164v-72l28-34 28 34v72m-42-54h28m-28 31h28" stroke-width="8"/>
+    <path d="M628 282v-70h64v70m33 0v-94h78v94m36 0v-66h58v66m-292-48h328" stroke-width="8"/>
+    <path d="M972 282v-96m0 0c-28 5-52 19-72 42m72-42c-5-35-22-62-52-80m52 80c18-33 45-54 80-64m-80 64c35 4 65 18 90 41" stroke-width="8"/>
+    <circle cx="1094" cy="245" r="34" stroke-width="8"/>
+    <path d="M1094 211v68m-32-47 64 26m-64 0 64-26" stroke-width="5"/>
+  </g>
+  <g fill="#c83332" opacity=".9">
+    <path d="M62 318h336v16H62z"/>
+    <path d="M470 318h260v16H470z"/>
+    <path d="M804 318h318v16H804z"/>
+  </g>
+</svg>
