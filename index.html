@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261009b">
+    <link rel="stylesheet" href="styles.css?v=20261009c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -22,7 +22,7 @@
         <a href="#signupForm">Signup</a>
         <a href="#results">Results</a>
         <a href="#media">Media</a>
-        <a href="#admin">Admin</a>
+        <a href="#adminView">Admin</a>
       </nav>
     </header>
 
@@ -40,7 +40,7 @@
               <img id="heroSlide" src="public/photos/aes-placeholder-1.svg" alt="AES FC football photo">
             </figure>
           </div>
-          <div class="slideshow-controls" aria-label="Photo controls">
+          <div class="slideshow-controls" aria-label="Hero photo controls">
             <button id="heroPhotoPrev" type="button" aria-label="Previous photo">‹</button>
             <button id="heroPhotoPause" type="button" aria-pressed="false">Pause</button>
             <button id="heroPhotoNext" type="button" aria-label="Next photo">›</button>
@@ -173,14 +173,18 @@
           <p class="eyebrow">From the pitch</p>
           <h2>Photos</h2>
         </div>
-        <div class="photo-carousel gallery-grid" aria-label="AES FC photo gallery">
+        <div class="photo-carousel" aria-label="AES FC photo gallery">
           <button id="photoPrev" class="photo-nav" type="button" aria-label="Previous photo">‹</button>
-          <div id="photoGrid" class="gallery-grid"></div>
+          <div id="photoGrid" class="photo-track"></div>
           <button id="photoNext" class="photo-nav" type="button" aria-label="Next photo">›</button>
+          <div class="photo-controls">
+            <button id="photoPause" type="button" aria-pressed="false">Pause</button>
+            <p id="photoCaption"></p>
+          </div>
         </div>
       </section>
 
-      <section id="admin" class="admin-section">
+      <section id="adminView" class="admin-section">
         <div class="panel admin-panel">
           <div class="section-title">
             <h2>Admin dashboard</h2>

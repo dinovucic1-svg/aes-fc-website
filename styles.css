@@ -5319,3 +5319,593 @@ textarea {
     grid-template-columns: 78px minmax(0, 1fr);
   }
 }
+
+/* Stage 4 focused public visual correction */
+body::after,
+body.public-retro::after {
+  display: none;
+}
+
+.fixture-section::before,
+.fixture-section::after,
+.signup-panel::before,
+.list-panel::before,
+.results-section::before,
+.gallery-section::before,
+.gallery-section::after {
+  display: none !important;
+}
+
+.intro {
+  align-items: center;
+  border-bottom-color: rgba(13, 44, 73, .13);
+}
+
+.intro-copy::after {
+  right: -34px;
+  bottom: -22px;
+  width: min(270px, 34vw);
+  height: min(150px, 18vw);
+  opacity: .105;
+  filter: sepia(.2) saturate(.7);
+}
+
+.intro h1 {
+  color: var(--navy);
+}
+
+.intro p:last-child,
+.fixture-note,
+.availability p:last-child,
+.compact-game-summary,
+.quiet-drawer p,
+.rules-drawer p,
+.cancel-form p {
+  font-weight: 430;
+}
+
+.photo-story {
+  min-height: 236px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  isolation: isolate;
+}
+
+.photo-story::before {
+  width: 58%;
+  background:
+    linear-gradient(90deg, var(--cream) 0%, rgba(244, 232, 208, .92) 28%, rgba(244, 232, 208, .5) 62%, transparent 100%),
+    linear-gradient(180deg, var(--cream) 0%, transparent 18%, transparent 82%, var(--cream) 100%);
+}
+
+.photo-story::after {
+  opacity: .34;
+  mix-blend-mode: normal;
+  background:
+    radial-gradient(ellipse at 100% 8%, rgba(244, 232, 208, .92), transparent 42%),
+    radial-gradient(ellipse at 100% 96%, rgba(244, 232, 208, .9), transparent 38%),
+    linear-gradient(90deg, rgba(244, 232, 208, .62), transparent 24%, transparent 76%, rgba(244, 232, 208, .68)),
+    linear-gradient(180deg, rgba(244, 232, 208, .76), transparent 17%, transparent 82%, rgba(244, 232, 208, .76));
+}
+
+.slides,
+.slide img {
+  min-height: 236px;
+}
+
+.slide img {
+  filter: sepia(.08) saturate(.84) contrast(.93) brightness(1.03);
+}
+
+.photo-story.single-photo .slideshow-controls {
+  display: none;
+}
+
+.fixture-section {
+  grid-template-columns: 250px minmax(0, 1fr);
+  margin-top: 18px;
+  padding-bottom: 18px;
+}
+
+.fixture {
+  background: rgba(255, 250, 239, .54);
+  border-color: rgba(13, 44, 73, .11);
+}
+
+.fixture.active {
+  background: rgba(255, 252, 244, .9);
+  box-shadow: inset 4px 0 0 rgba(200, 51, 50, .82);
+}
+
+.fixture-date,
+.fixture-main,
+.fixture-status {
+  font-weight: 520;
+}
+
+.fixture-date {
+  color: var(--red-deep);
+}
+
+.section-head h2,
+.availability h2,
+.list-title h2,
+.result-card h2,
+.rankings-card h2,
+.gallery-section h2 {
+  font-size: clamp(1.36rem, 2.4vw, 2.05rem);
+  letter-spacing: .01em;
+}
+
+.signup-area {
+  grid-template-columns: minmax(0, .86fr) minmax(360px, 1.08fr);
+  align-items: start;
+}
+
+.availability {
+  grid-column: 1;
+  padding: 6px 0 0;
+  border-bottom: 0;
+}
+
+.availability h2 {
+  margin-bottom: 2px;
+}
+
+.signup-panel {
+  background: rgba(255, 248, 232, .86);
+  border-color: rgba(200, 51, 50, .2);
+}
+
+.list-panel {
+  background: rgba(250, 240, 218, .72);
+  border-color: rgba(13, 44, 73, .1);
+}
+
+.signup-panel,
+.list-panel,
+.result-card,
+.rankings-card,
+.gallery-section {
+  box-shadow: none;
+}
+
+.form-grid {
+  gap: 10px;
+}
+
+.check-row {
+  margin: 10px 0 8px;
+}
+
+.quiet-drawer,
+.rules-drawer,
+.cancel-form {
+  margin-bottom: 8px;
+  padding-block: 6px;
+}
+
+.rules-drawer {
+  margin-top: 9px;
+}
+
+.signup-panel > button:not(.cancel-action) {
+  margin-top: 5px;
+}
+
+.cancel-form summary {
+  font-size: .9rem;
+  font-weight: 500;
+}
+
+.list-title {
+  margin-bottom: 8px;
+}
+
+.list-title strong {
+  color: var(--navy);
+  font-size: 1rem;
+  font-weight: 560;
+}
+
+.list-panel li,
+.subs,
+.ranking-list li {
+  min-height: 32px;
+  padding-block: 3px;
+}
+
+.list-panel li strong,
+.ranking-list strong,
+.result-player-row strong,
+.teams strong {
+  font-weight: 520;
+}
+
+.flag-bg {
+  right: 0;
+  width: 108px;
+  height: 68px;
+  opacity: .2;
+}
+
+.results-section {
+  grid-template-columns: minmax(0, 1.12fr) minmax(300px, .88fr);
+  background: rgba(252, 245, 230, .54);
+  border-top-color: rgba(200, 51, 50, .42);
+}
+
+.results-section > *,
+.results-grid > *,
+.older-results > * {
+  min-width: 0;
+}
+
+.result-card,
+.rankings-card,
+.gallery-section {
+  width: auto;
+  max-width: 100%;
+  background: rgba(255, 251, 242, .78);
+}
+
+.results-title-row {
+  align-items: center;
+}
+
+.result-score-block {
+  font-size: clamp(3.3rem, 7.4vw, 5.1rem);
+}
+
+.match-graphic-card {
+  background: rgba(255, 253, 247, .58);
+}
+
+.more-results {
+  margin-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.more-results summary {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  color: var(--navy);
+  cursor: pointer;
+  font-weight: 560;
+}
+
+.older-results {
+  display: grid;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.stats-tabs {
+  justify-content: flex-start;
+  gap: 0;
+  padding: 0;
+  overflow-x: auto;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.stats-tabs button {
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  font-weight: 520;
+}
+
+.stats-tabs button.active {
+  color: var(--navy);
+  background: transparent;
+  border-bottom-color: var(--red);
+  box-shadow: none;
+}
+
+.rank-move {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: .78rem;
+  font-weight: 560;
+}
+
+.rank-move.up {
+  color: #27724e;
+}
+
+.rank-move.down {
+  color: #aa2f38;
+}
+
+.rank-move.same {
+  color: var(--muted);
+}
+
+.stats-table .podium-row td,
+.stats-table .podium-1 td,
+.stats-table .podium-2 td,
+.stats-table .podium-3 td {
+  background: transparent;
+}
+
+.stats-table td,
+.stats-table th {
+  font-weight: 480;
+}
+
+.stats-table td.player-cell,
+.stats-table td:nth-child(4) {
+  font-weight: 590;
+}
+
+.gallery-section {
+  padding: 18px 0 0;
+  background: transparent;
+  border: 0;
+}
+
+.photo-carousel,
+.photo-carousel.gallery-grid {
+  position: relative;
+  display: block;
+  min-height: clamp(230px, 42vw, 510px);
+  margin-top: 12px;
+  overflow: hidden;
+  background: rgba(255, 250, 239, .7);
+  border: 1px solid rgba(13, 44, 73, .12);
+}
+
+#photoGrid,
+#photoGrid.gallery-grid,
+.photo-track {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: 0;
+}
+
+.gallery-slide {
+  position: absolute;
+  inset: 0;
+  display: block;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.gallery-slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.photo-card {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.photo-card img {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+  object-position: center;
+}
+
+.photo-carousel .photo-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: none !important;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  color: var(--navy);
+  background: rgba(255, 250, 239, .88);
+  border: 1px solid rgba(13, 44, 73, .18);
+  transform: translateY(-50%);
+}
+
+.photo-carousel.has-multiple .photo-nav {
+  display: grid !important;
+  place-items: center;
+}
+
+.photo-carousel .photo-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+}
+
+.photo-carousel.has-multiple .photo-controls {
+  display: flex;
+}
+
+.photo-controls button,
+.photo-controls p {
+  margin: 0;
+  padding: 7px 10px;
+  background: rgba(255, 250, 239, .84);
+  border: 1px solid rgba(13, 44, 73, .16);
+}
+
+.photo-controls p {
+  max-width: min(60ch, 70%);
+  font-size: .86rem;
+}
+
+.admin-photo.is-hero-photo {
+  border-color: rgba(200, 51, 50, .34);
+  background: rgba(255, 248, 232, .72);
+}
+
+.admin-photo-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 6px;
+  color: #fff8e8;
+  background: var(--red);
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.admin-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 820px) {
+  .intro-copy::after {
+    display: block;
+    right: 0;
+    bottom: -8px;
+    width: 170px;
+    height: 86px;
+    opacity: .08;
+  }
+
+  .photo-story {
+    min-height: 154px;
+  }
+
+  .slides,
+  .slide img {
+    min-height: 154px;
+  }
+
+  .fixture-section {
+    grid-template-columns: 1fr;
+  }
+
+  .section-head h2,
+  .availability h2,
+  .list-title h2,
+  .gallery-section h2,
+  .result-card h2,
+  .rankings-card h2 {
+    font-size: 1.56rem;
+  }
+
+  .signup-area {
+    grid-template-columns: 1fr;
+  }
+
+  .availability {
+    grid-column: 1;
+    order: 0;
+  }
+
+  .results-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .photo-carousel,
+  .photo-carousel.gallery-grid {
+    min-height: 260px;
+  }
+}
+
+@media (max-width: 430px) {
+  main {
+    width: min(100% - 16px, 1120px);
+  }
+
+  .intro h1 {
+    font-size: clamp(2.65rem, 13.8vw, 3.8rem);
+  }
+
+  .photo-story {
+    min-height: 138px;
+  }
+
+  .slides,
+  .slide img {
+    min-height: 138px;
+  }
+
+  .fixture {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 8px;
+    min-height: 50px;
+  }
+
+  .fixture-main,
+  .fixture-status {
+    font-size: .88rem;
+  }
+
+  .signup-panel,
+  .list-panel,
+  .result-card,
+  .rankings-card {
+    padding: 12px;
+  }
+
+  .result-team-compact,
+  .team-list {
+    padding-inline: 8px;
+  }
+
+  .result-player-row,
+  .teams li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    font-size: .88rem;
+  }
+
+  .result-stat-icons,
+  .stat-mark {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .stats-table th:nth-child(n+6),
+  .stats-table td:nth-child(n+6) {
+    display: none;
+  }
+
+  .stats-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: auto;
+  }
+
+  .stats-table th,
+  .stats-table td {
+    padding-inline: 6px;
+  }
+
+  .photo-carousel,
+  .photo-carousel.gallery-grid {
+    min-height: 220px;
+  }
+
+  .photo-controls p {
+    max-width: 54%;
+  }
+}

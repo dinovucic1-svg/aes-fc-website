@@ -284,9 +284,11 @@ const state = {
     started: false
   },
   photoPaused: false,
+  galleryIndex: 0,
   settings: {
     rules_title: DEFAULT_RULES_TITLE,
-    rules_text: DEFAULT_RULES_TEXT
+    rules_text: DEFAULT_RULES_TEXT,
+    hero_photo_url: ""
   },
   adminPassword: sessionStorage.getItem("aes_admin_password") || "",
   adminVerified: sessionStorage.getItem("aes_admin_verified") === "true"
@@ -531,7 +533,8 @@ function activateDemoMode() {
   state.results = demoResults;
   state.settings = {
     rules_title: "Signup rules",
-    rules_text: DEFAULT_RULES_TEXT
+    rules_text: DEFAULT_RULES_TEXT,
+    hero_photo_url: demoPhotos[0]?.url || ""
   };
   state.signupCountsByGame = demoSignupCounts();
 }
@@ -952,6 +955,7 @@ function renderResults() {
     state.resultsMonth = months.includes(currentMonthKey()) ? currentMonthKey() : months[0] || "all";
   }
   const selectedResults = selectedResultMonthResults(results);
+  const [latestResult, ...olderResults] = selectedResults;
   const monthSelect = el("resultsMonthSelect");
   if (monthSelect) {
     monthSelect.innerHTML = `
@@ -960,7 +964,16 @@ function renderResults() {
     `;
   }
   el("recentResults").innerHTML = selectedResults.length
-    ? `<p class="stat-key">G = goals · A = assists</p>${selectedResults.map(renderResultCard).join("")}`
+    ? `
+      <p class="stat-key">G = goals · A = assists</p>
+      ${renderResultCard(latestResult)}
+      ${olderResults.length ? `
+        <details class="more-results">
+          <summary>More results</summary>
+          <div class="older-results">${olderResults.map(renderResultCard).join("")}</div>
+        </details>
+      ` : ""}
+    `
     : `<p class="empty-note">No match results for ${escapeHtml(monthLabel(state.resultsMonth))} yet.</p>`;
   renderPlayerStats(results);
 }
@@ -1101,8 +1114,9 @@ function selectedResultMonthResults(results = []) {
 
 function selectedStatsResults(results = []) {
   const months = availableStatsMonths(results);
-  if (!state.statsMonth) {
-    state.statsMonth = months.includes(currentMonthKey()) ? currentMonthKey() : months[0] || "all";
+  const hasRowsForMonth = (month) => calculatePlayerStats(monthResults(results, month)).length > 0;
+  if (!state.statsMonth || (state.statsMonth !== "all" && !hasRowsForMonth(state.statsMonth))) {
+    state.statsMonth = months.find((month) => hasRowsForMonth(month)) || "all";
   }
   if (state.statsMonth === "all") return results;
   return results.filter((result) => monthKey(result.game_date) === state.statsMonth);
@@ -1725,42 +1739,61 @@ function renderRules() {
 
 function renderPhotos() {
   const photos = state.photos.length ? state.photos : fallbackPhotos;
-  state.photoIndex = Math.min(state.photoIndex, photos.length - 1);
-  document.querySelector(".photo-story")?.classList.toggle("has-multiple", photos.length > 1);
-  document.querySelector(".photo-story")?.classList.toggle("single-photo", photos.length <= 1);
+  state.galleryIndex = Math.min(state.galleryIndex || 0, photos.length - 1);
+  const heroPhoto = selectedHeroPhoto(photos);
+  const heroStory = document.querySelector(".photo-story");
+  heroStory?.classList.add("single-photo");
+  heroStory?.classList.remove("has-multiple");
+  el("heroSlide").src = heroPhoto.url;
+  el("heroSlide").alt = heroPhoto.title || "AES FC football photo";
   el("photoGrid").innerHTML = photos.map((photo, index) => `
-    <button class="photo-card" type="button" data-photo="${index}" aria-label="Open ${escapeHtml(photo.title || "football photo")}">
-      <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
-    </button>
+    <figure class="gallery-slide ${index === state.galleryIndex ? "active" : ""}" data-photo="${index}">
+      <button class="photo-card" type="button" data-photo="${index}" aria-label="Open ${escapeHtml(photo.title || "football photo")}">
+        <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
+      </button>
+    </figure>
   `).join("");
-  showPhoto(state.photoIndex);
+  document.querySelector(".photo-carousel")?.classList.toggle("has-multiple", photos.length > 1);
+  showPhoto(state.galleryIndex);
   clearInterval(window.aesSlideTimer);
   if (state.photoPaused || photos.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   window.aesSlideTimer = setInterval(() => {
     const latest = state.photos.length ? state.photos : fallbackPhotos;
-    if (!state.photoPaused && latest.length > 1) showPhoto(state.photoIndex + 1);
+    if (!state.photoPaused && latest.length > 1) showPhoto(state.galleryIndex + 1);
   }, 4200);
+}
+
+function selectedHeroPhoto(photos = state.photos.length ? state.photos : fallbackPhotos) {
+  const stored = String(state.settings.hero_photo_url || localStorage.getItem("aesfc_hero_photo_url") || "").trim();
+  return photos.find((photo) => photo.url === stored || String(photo.id) === stored) || photos[0] || fallbackPhotos[0];
 }
 
 function showPhoto(index) {
   const photos = state.photos.length ? state.photos : fallbackPhotos;
   if (!photos.length) return;
-  state.photoIndex = (index + photos.length) % photos.length;
-  document.querySelectorAll(".photo-card").forEach((card, cardIndex) => {
-    card.classList.toggle("active", cardIndex === state.photoIndex);
+  state.galleryIndex = (index + photos.length) % photos.length;
+  document.querySelectorAll(".gallery-slide").forEach((slide, slideIndex) => {
+    slide.classList.toggle("active", slideIndex === state.galleryIndex);
   });
-  const photo = photos[state.photoIndex];
-  el("heroSlide").src = photo.url;
-  el("heroSlide").alt = photo.title || "AES FC football photo";
-  if (el("photoCounter")) el("photoCounter").textContent = `Photo ${state.photoIndex + 1} of ${photos.length}`;
+  document.querySelectorAll(".photo-card").forEach((card, cardIndex) => {
+    card.classList.toggle("active", cardIndex === state.galleryIndex);
+  });
+  const photo = photos[state.galleryIndex];
+  if (el("photoCaption")) el("photoCaption").textContent = photo.caption || photo.title || "";
+  if (el("photoCounter")) el("photoCounter").textContent = `Photo ${state.galleryIndex + 1} of ${photos.length}`;
 }
 
 function toggleHeroPhotoPause() {
   state.photoPaused = !state.photoPaused;
   const button = el("heroPhotoPause");
+  const galleryButton = el("photoPause");
   if (button) {
     button.textContent = state.photoPaused ? "Play" : "Pause";
     button.setAttribute("aria-pressed", state.photoPaused ? "true" : "false");
+  }
+  if (galleryButton) {
+    galleryButton.textContent = state.photoPaused ? "Play" : "Pause";
+    galleryButton.setAttribute("aria-pressed", state.photoPaused ? "true" : "false");
   }
   renderPhotos();
 }
@@ -1824,17 +1857,12 @@ function renderFixtureCards() {
 }
 
 function renderPublicSignup(signup) {
-  const signedBy = signup.signed_up_by || String(signup.comments || "").match(/^Signed up by (.+)\.$/i)?.[1];
   const nationality = signupNationality(signup);
   const flag = nationalityFlag(nationality);
   return `
     <li class="${flag ? "has-flag" : ""}">
       <strong>${escapeHtml(signup.first_name)} ${escapeHtml(signup.last_name || "")}</strong>
       ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
-      <span class="meta">
-        <span>${fmtTime.format(new Date(signup.created_at))}</span>
-        ${signedBy ? `<span class="signup-note">signed up by ${escapeHtml(signedBy)}</span>` : ""}
-      </span>
     </li>
   `;
 }
@@ -1860,7 +1888,7 @@ function renderSheetStatus() {
   const capacity = Number(game.capacity || 12);
   const spotsLeft = Math.max(0, capacity - playingCount);
   const selectedTitle = `${fmtShortGame.format(gameStart)} · ${formatClock(game.start_time).replace(":00 ", "")}`;
-  const selectedSummary = `${game.location_name || "AES FC"} · ${game.is_open ? `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : "Signup closed"}`;
+  const selectedSummary = `${game.location_name || "AES FC"} · ${playingCount}/${capacity} playing${game.is_open ? ` · ${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : " · signup closed"}`;
   setText("selectedGameTitle", selectedTitle);
   setText("selectedGameSummary", selectedSummary);
   setText("listGameSummary", `${fmtShortGame.format(gameStart)}, ${formatClock(game.start_time).replace(":00 ", "")}`);
@@ -1868,9 +1896,7 @@ function renderSheetStatus() {
   const openCount = visibleGames.filter(isGameOpen).length;
   const upcomingCount = visibleGames.length;
   const countText = openCount || upcomingCount;
-  setText("openSignupCount", countText === 1
-    ? `${openCount ? "Open: 1" : "Upcoming: 1"}`
-    : `${openCount ? "Open" : "Upcoming"}: ${countText}`);
+  setText("openSignupCount", `${playingCount}/${capacity} playing`);
   el("sheetStatus").classList.toggle("hidden", game.is_open);
   el("sheetStatus").textContent = game.is_open
     ? ""
@@ -3360,11 +3386,19 @@ function renderAdminProfiles() {
 }
 
 function renderAdminPhotos(photos) {
+  const heroPhoto = selectedHeroPhoto(photos);
   el("adminPhotos").innerHTML = photos.map((photo) => `
-    <div class="admin-photo">
+    <div class="admin-photo ${heroPhoto?.url === photo.url ? "is-hero-photo" : ""}">
       <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.title || "photo")}">
-      <div><strong>${escapeHtml(photo.title || "Untitled")}</strong><br><small>${escapeHtml(photo.url)}</small></div>
-      <button class="icon-button" type="button" data-remove-photo="${photo.id}">Remove</button>
+      <div>
+        <strong>${escapeHtml(photo.title || "Untitled")}</strong>
+        ${heroPhoto?.url === photo.url ? "<span class=\"admin-photo-badge\">Hero</span>" : ""}
+        <br><small>${escapeHtml(photo.url)}</small>
+      </div>
+      <div class="admin-photo-actions">
+        <button class="secondary compact" type="button" data-set-hero-photo="${escapeHtml(photo.url)}">Set hero</button>
+        <button class="icon-button" type="button" data-remove-photo="${photo.id}">Remove</button>
+      </div>
     </div>
   `).join("") || "<p>No photos yet.</p>";
 }
@@ -4683,6 +4717,7 @@ async function handleAdminClicks(event) {
   const signupId = event.target.dataset.removeSignup;
   const saveSignupId = event.target.dataset.saveSignup;
   const photoId = event.target.dataset.removePhoto;
+  const heroPhotoUrl = event.target.dataset.setHeroPhoto;
   const removeRegularId = event.target.dataset.removeRegular;
   const saveProfileKey = event.target.hasAttribute("data-save-profile-key") ? event.target.dataset.saveProfileKey : null;
   const removeProfileId = event.target.dataset.removeProfile;
@@ -4776,6 +4811,33 @@ async function handleAdminClicks(event) {
       if (error) throw error;
       setMessage(el("adminMessage"), "Photo removed.");
     }
+    if (heroPhotoUrl) {
+      state.settings.hero_photo_url = heroPhotoUrl;
+      localStorage.setItem("aesfc_hero_photo_url", heroPhotoUrl);
+      if (DEMO_MODE || !db) {
+        renderPhotos();
+        renderAdminPhotos(state.photos);
+        setMessage(el("adminMessage"), "Hero photo updated for this preview.");
+        return;
+      }
+      const { error } = await db.from("aesfc_settings").upsert({
+        id: true,
+        hero_photo_url: heroPhotoUrl
+      }, { onConflict: "id" });
+      if (error) {
+        if (/hero_photo_url|schema cache/i.test(error.message || "")) {
+          renderPhotos();
+          renderAdminPhotos(state.photos);
+          setMessage(el("adminMessage"), "Hero photo updated in this browser. Add hero_photo_url to aesfc_settings before making this global.", true);
+          return;
+        }
+        throw error;
+      }
+      renderPhotos();
+      renderAdminPhotos(state.photos);
+      setMessage(el("adminMessage"), "Hero photo saved.");
+      return;
+    }
     if (saveProfileKey !== null) {
       const row = event.target.closest("[data-profile-row]");
       const fullName = splitFullName(row.querySelector("[name='profile_full_name']").value).fullName;
@@ -4845,11 +4907,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const card = event.target.closest("[data-photo]");
     if (card) openLightbox(Number(card.dataset.photo));
   });
-  el("photoPrev").addEventListener("click", () => showPhoto(state.photoIndex - 1));
-  el("photoNext").addEventListener("click", () => showPhoto(state.photoIndex + 1));
-  el("heroPhotoPrev")?.addEventListener("click", () => showPhoto(state.photoIndex - 1));
-  el("heroPhotoNext")?.addEventListener("click", () => showPhoto(state.photoIndex + 1));
+  el("photoPrev").addEventListener("click", () => showPhoto(state.galleryIndex - 1));
+  el("photoNext").addEventListener("click", () => showPhoto(state.galleryIndex + 1));
+  el("heroPhotoPrev")?.addEventListener("click", () => showPhoto(state.galleryIndex - 1));
+  el("heroPhotoNext")?.addEventListener("click", () => showPhoto(state.galleryIndex + 1));
   el("heroPhotoPause")?.addEventListener("click", toggleHeroPhotoPause);
+  el("photoPause")?.addEventListener("click", toggleHeroPhotoPause);
   el("resultsMonthSelect").addEventListener("change", (event) => {
     state.resultsMonth = event.target.value;
     renderResults();

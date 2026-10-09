@@ -45,6 +45,7 @@ create table if not exists public.aesfc_settings (
   id boolean primary key default true,
   rules_title text not null default 'Signup rules',
   rules_text text not null,
+  hero_photo_url text not null default '',
   youtube_channel_url text not null default 'https://www.youtube.com/@dinovucic239/videos',
   youtube_video_ids text not null default '',
   updated_at timestamptz not null default now(),
@@ -189,7 +190,10 @@ for select
 to anon, authenticated
 using (true);
 
-insert into public.aesfc_settings (id, rules_title, rules_text, youtube_channel_url, youtube_video_ids)
+alter table public.aesfc_settings
+  add column if not exists hero_photo_url text not null default '';
+
+insert into public.aesfc_settings (id, rules_title, rules_text, hero_photo_url, youtube_channel_url, youtube_video_ids)
 values (
   true,
   'Signup rules',
@@ -202,6 +206,7 @@ Please give regulars from our WhatsApp group the first chance to sign up in the 
 Please do not share the link with others. If you are signing someone else up, sign them up yourself and include their name in the comments section.
 
 Anyone you sign up is your responsibility. If they, or you, cannot play, tell us and make an effort to find a replacement.',
+  '',
   'https://www.youtube.com/@dinovucic239/videos',
   ''
 )

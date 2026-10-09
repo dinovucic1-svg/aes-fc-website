@@ -18,6 +18,9 @@ create table if not exists public.aesfc_fixture_exceptions (
   updated_at timestamptz not null default now()
 );
 
+alter table public.aesfc_settings
+  add column if not exists hero_photo_url text not null default '';
+
 alter table public.aesfc_admin_users enable row level security;
 alter table public.aesfc_fixture_exceptions enable row level security;
 
