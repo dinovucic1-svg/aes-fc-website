@@ -1719,28 +1719,15 @@ function renderRules() {
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
   const rulesTitle = String(state.settings.rules_title || "").trim();
-  el("rulesTitle").textContent = !rulesTitle || rulesTitle.toLowerCase() === "signup rules" ? "Before You Sign Up" : rulesTitle;
-  const intro = paragraphs.slice(0, 2);
-  const rest = paragraphs.slice(2);
-  el("rulesText").innerHTML = `
-    <div class="rules-intro">
-      ${intro.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-    </div>
-    ${rest.length ? `
-      <details class="rules-drawer">
-        <summary>Full signup guidelines</summary>
-        <div class="rules-full">
-          ${rest.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-        </div>
-      </details>
-    ` : ""}
-  `;
+  el("rulesTitle").textContent = !rulesTitle || rulesTitle.toLowerCase() === "signup rules" ? "Signup rules" : rulesTitle;
+  el("rulesText").innerHTML = paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
 }
 
 function renderPhotos() {
   const photos = state.photos.length ? state.photos : fallbackPhotos;
   state.photoIndex = Math.min(state.photoIndex, photos.length - 1);
   document.querySelector(".photo-story")?.classList.toggle("has-multiple", photos.length > 1);
+  document.querySelector(".photo-story")?.classList.toggle("single-photo", photos.length <= 1);
   el("photoGrid").innerHTML = photos.map((photo, index) => `
     <button class="photo-card" type="button" data-photo="${index}" aria-label="Open ${escapeHtml(photo.title || "football photo")}">
       <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
@@ -1801,7 +1788,7 @@ function renderGameSelector() {
   const listSelect = el("listGameSelect");
   if (!wrap || !select) return;
   const games = state.publicGames?.length ? state.publicGames : state.games || [];
-  wrap.classList.toggle("hidden", games.length <= 1);
+  wrap.classList.add("hidden");
   const options = games.map((game) => {
     const start = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
     const label = `${fmtShortGame.format(start)}, ${formatClock(game.start_time).replace(":00 ", "")} - ${game.location_name || "AES FC"}`;
@@ -1810,7 +1797,7 @@ function renderGameSelector() {
   select.innerHTML = options;
   if (state.game?.id) select.value = state.game.id;
   if (listWrap && listSelect) {
-    listWrap.classList.toggle("hidden", games.length < 1);
+    listWrap.classList.add("hidden");
     listSelect.innerHTML = options;
     if (state.game?.id) listSelect.value = state.game.id;
   }
@@ -1854,33 +1841,36 @@ function renderPublicSignup(signup) {
 
 function renderSheetStatus() {
   const game = state.game;
-  const heroGame = nextDisplayGame();
-  if (!game || !heroGame) {
-    el("gameDate").textContent = "Connect Supabase to load the next game";
-    el("listGameSummary").textContent = "Connect Supabase";
+  const setText = (id, value) => {
+    const node = el(id);
+    if (node) node.textContent = value;
+  };
+  if (!game) {
+    setText("selectedGameTitle", "Connect Supabase");
+    setText("selectedGameSummary", "Live signups will appear here once Supabase is connected.");
+    setText("listGameSummary", "Connect Supabase");
+    setText("openSignupCount", "");
     el("openSignupCount").textContent = "";
     el("sheetStatus").classList.remove("hidden");
     el("sheetStatus").textContent = "The site is ready. Connect Supabase to activate live signups.";
     return;
   }
-  const heroStart = new Date(zagrebDateTime(heroGame.game_date, String(heroGame.start_time || "21:00").slice(0, 5)));
-  const dateText = fmtDate.format(heroStart);
-  const timeText = `${formatClock(heroGame.start_time)} - ${formatClock(heroGame.end_time)}`;
-  const locationText = heroGame.location_name || "NK Bili As ADB Pitch";
-  const locationUrl = heroGame.location_url || MAP_URL;
-  el("gameDate").textContent = dateText;
-  el("gameTime").textContent = timeText;
-  el("gameLocation").textContent = locationText;
-  el("gameLocation").href = locationUrl;
   const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
-  el("listGameSummary").textContent = `${fmtShortGame.format(gameStart)}, ${formatClock(game.start_time).replace(":00 ", "")}`;
+  const playingCount = state.signups.filter((signup) => signup.status === "Playing").length;
+  const capacity = Number(game.capacity || 12);
+  const spotsLeft = Math.max(0, capacity - playingCount);
+  const selectedTitle = `${fmtShortGame.format(gameStart)} · ${formatClock(game.start_time).replace(":00 ", "")}`;
+  const selectedSummary = `${game.location_name || "AES FC"} · ${game.is_open ? `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : "Signup closed"}`;
+  setText("selectedGameTitle", selectedTitle);
+  setText("selectedGameSummary", selectedSummary);
+  setText("listGameSummary", `${fmtShortGame.format(gameStart)}, ${formatClock(game.start_time).replace(":00 ", "")}`);
   const visibleGames = state.publicGames?.length ? state.publicGames : state.games || [];
   const openCount = visibleGames.filter(isGameOpen).length;
   const upcomingCount = visibleGames.length;
   const countText = openCount || upcomingCount;
-  el("openSignupCount").textContent = countText === 1
+  setText("openSignupCount", countText === 1
     ? `${openCount ? "Open: 1" : "Upcoming: 1"}`
-    : `${openCount ? "Open" : "Upcoming"}: ${countText}`;
+    : `${openCount ? "Open" : "Upcoming"}: ${countText}`);
   el("sheetStatus").classList.toggle("hidden", game.is_open);
   el("sheetStatus").textContent = game.is_open
     ? ""

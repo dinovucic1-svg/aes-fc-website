@@ -5,18 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261009a">
+    <link rel="stylesheet" href="styles.css?v=20261009b">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <div id="demoBanner" class="demo-banner hidden">Local demo mode · sample data only · no production writes</div>
-    <header class="topbar site-header">
-      <div class="checker-strip" aria-hidden="true"></div>
+    <header class="site-header">
       <a class="brand" href="#signupForm" aria-label="AES FC signup form">
-        <span class="crest"><img src="public/aes-fc-logo.png" alt="AES FC logo"></span>
+        <img src="public/aes-fc-logo.png" alt="AES FC logo">
         <span>
           <strong>AES FC</strong>
-          <small>Private signup</small>
+          <small>Internationals &amp; locals</small>
         </span>
       </a>
       <nav aria-label="Main navigation">
@@ -28,24 +27,12 @@
     </header>
 
     <main>
-      <section class="hero intro" id="signup">
+      <p class="sample-note demo-only hidden">Local demo preview · sample data only</p>
+
+      <section class="intro" id="signup">
         <div class="intro-copy">
           <h1>Football in Split.</h1>
-          <p class="hero-subtitle">Internationals &amp; locals. Since 2015.</p>
-          <div class="match-strip">
-            <div>
-              <span>Next Game</span>
-              <strong id="gameDate">Loading...</strong>
-            </div>
-            <div>
-              <span>Time</span>
-              <strong id="gameTime">9:00 PM - 10:00 PM</strong>
-            </div>
-            <div>
-              <span>Location</span>
-              <strong><a id="gameLocation" href="https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8" target="_blank" rel="noreferrer">NK Bili As ADB Pitch</a></strong>
-            </div>
-          </div>
+          <p>Internationals &amp; locals. Since 2015.</p>
         </div>
         <section class="photo-story" aria-label="AES FC photo slideshow">
           <div class="slides">
@@ -61,13 +48,6 @@
         </section>
       </section>
 
-      <section class="notice-band">
-        <div class="notice">
-          <h2 id="rulesTitle">Before You Sign Up</h2>
-          <div id="rulesText"></div>
-        </div>
-      </section>
-
       <section class="fixture-section" aria-label="Upcoming games">
         <div class="section-head">
           <p class="eyebrow">Choose game</p>
@@ -77,64 +57,82 @@
         <div id="fixtureCards" class="fixture-list"></div>
       </section>
 
-      <section class="signup-layout">
-        <form class="panel signup-form" id="signupForm">
-          <div class="section-title">
-            <h2>Sign up</h2>
-          </div>
-          <label id="gameSelectWrap" class="game-select-wrap hidden">Game
-            <select id="gameSelect" name="game_select"></select>
-          </label>
-          <div class="form-grid">
-            <label>Password<input name="signup_password" type="password" inputmode="numeric" autocomplete="off" required></label>
-            <label>Name
-              <select name="full_name_select" class="player-select"></select>
-            </label>
-            <label id="manualNameWrap" class="hidden">Full name<input name="full_name_manual" autocomplete="name" placeholder="First and last name"></label>
-            <label>Players<input name="player_count" type="number" min="1" max="12" step="1" inputmode="numeric" pattern="[0-9]*" value="1"></label>
-          </div>
-          <label class="responsibility-choice compact-check">
-            <input type="checkbox" name="signup_for_self" checked>
-            I’m signing myself up
-          </label>
-          <div id="responsiblePlayerWrap" class="form-grid hidden">
-            <label>Your name
-              <select name="responsible_player_select" id="responsiblePlayerSelect"></select>
-            </label>
-            <label id="responsibleManualWrap" class="hidden">Your full name<input name="responsible_player_manual" placeholder="First and last name"></label>
-          </div>
-          <p id="signupPriorityNote" class="form-note"></p>
-          <div id="extraPlayersWrap" class="hidden extra-player-fields"></div>
-          <p id="responsibilityWarning" class="warning hidden">You are responsible for anyone you sign up. Please include their full names and update the admins if plans change.</p>
-          <button class="primary" type="submit">Sign up</button>
-          <p id="signupMessage" class="form-message" role="status"></p>
-          <div id="calendarActions" class="calendar-actions hidden"></div>
-        </form>
+      <section class="signup-area">
+        <aside class="availability" aria-label="Selected game availability">
+          <p class="eyebrow">Selected match</p>
+          <h2 id="selectedGameTitle">Loading...</h2>
+          <p id="selectedGameSummary">Checking availability...</p>
+          <div class="status-banner" id="sheetStatus">Checking signup status...</div>
+        </aside>
 
-        <details class="panel cancel-form cancel-drawer">
-          <summary>Cancel signup</summary>
-          <form id="cancelSignupForm">
-            <div class="form-grid">
-              <label>Signup password<input name="cancel_password" type="password" inputmode="numeric" autocomplete="off" required></label>
-              <label>Your name
-                <select name="cancel_signup_id" id="cancelSignupSelect" required></select>
-              </label>
+        <div class="signup-column">
+          <form class="signup-panel" id="signupForm">
+            <div class="section-head">
+              <p class="eyebrow">Join</p>
+              <h2>Sign up</h2>
             </div>
-            <button class="secondary" type="submit">Cancel my signup</button>
-            <p id="cancelSignupMessage" class="form-message" role="status"></p>
+            <label id="gameSelectWrap" class="game-select-wrap hidden">Game
+              <select id="gameSelect" name="game_select"></select>
+            </label>
+            <div class="form-grid">
+              <label>Password<input name="signup_password" type="password" inputmode="numeric" autocomplete="off" required></label>
+              <label>Name
+                <select name="full_name_select" class="player-select"></select>
+              </label>
+              <label id="manualNameWrap" class="hidden">Full name<input name="full_name_manual" autocomplete="name" placeholder="First and last name"></label>
+            </div>
+            <label class="responsibility-choice check-row">
+              <input type="checkbox" name="signup_for_self" checked>
+              I’m signing myself up
+            </label>
+            <details class="quiet-drawer">
+              <summary>Add guests or extra players</summary>
+              <label>Players<input name="player_count" type="number" min="1" max="12" step="1" inputmode="numeric" pattern="[0-9]*" value="1"></label>
+              <div id="extraPlayersWrap" class="hidden extra-player-fields"></div>
+              <p id="responsibilityWarning" class="warning hidden">You are responsible for anyone you sign up. Please include their full names and update the admins if plans change.</p>
+            </details>
+            <div id="responsiblePlayerWrap" class="form-grid hidden">
+              <label>Your name
+                <select name="responsible_player_select" id="responsiblePlayerSelect"></select>
+              </label>
+              <label id="responsibleManualWrap" class="hidden">Your full name<input name="responsible_player_manual" placeholder="First and last name"></label>
+            </div>
+            <p id="signupPriorityNote" class="form-note"></p>
+            <button class="primary" type="submit">Sign up</button>
+            <p id="signupMessage" class="form-message" role="status"></p>
+            <div id="calendarActions" class="calendar-actions hidden"></div>
+            <details class="rules-drawer">
+              <summary id="rulesTitle">Signup rules</summary>
+              <div id="rulesText"></div>
+            </details>
           </form>
-        </details>
+          <details class="cancel-form cancel-drawer">
+            <summary>Cancel signup</summary>
+            <form id="cancelSignupForm">
+              <div class="form-grid">
+                <label>Signup password<input name="cancel_password" type="password" inputmode="numeric" autocomplete="off" required></label>
+                <label>Your name
+                  <select name="cancel_signup_id" id="cancelSignupSelect" required></select>
+                </label>
+              </div>
+              <button class="secondary" type="submit">Cancel my signup</button>
+              <p id="cancelSignupMessage" class="form-message" role="status"></p>
+            </form>
+          </details>
+        </div>
 
-        <aside class="panel lists-panel">
-          <div class="section-title">
-            <h2 id="liveListTitle">Selected game players</h2>
-            <p id="openSignupCount" class="compact-game-summary">Loading...</p>
-            <p id="listGameSummary" class="compact-game-summary hidden"></p>
+        <aside class="list-panel">
+          <div class="list-title">
+            <div>
+              <p class="eyebrow">Live list</p>
+              <h2 id="liveListTitle">Selected game players</h2>
+            </div>
+            <strong id="openSignupCount">Loading...</strong>
           </div>
+          <p id="listGameSummary" class="compact-game-summary hidden"></p>
           <label id="listGameSelectWrap" class="game-select-wrap live-list-select hidden">
             <select id="listGameSelect"></select>
           </label>
-          <div class="status-banner" id="sheetStatus">Checking signup status...</div>
           <div class="list-block">
             <h3>Playing <span id="playingCount">0</span>/12</h3>
             <ol id="playingList" class="signup-list"></ol>
@@ -146,19 +144,23 @@
         </aside>
       </section>
 
-      <section id="results" class="content-section results-section">
-        <div class="section-title results-title-row">
-          <div>
-            <h2>Match Results</h2>
-          </div>
-          <label class="result-month-control">Month
-            <select id="resultsMonthSelect"></select>
-          </label>
-        </div>
-        <div id="recentResults" class="results-grid"></div>
-        <div class="stats-panel">
-          <div class="section-title">
+      <section id="results" class="results-section">
+        <div class="result-card">
+          <div class="section-head results-title-row">
             <div>
+              <p class="eyebrow">Recent scores</p>
+              <h2>Match Results</h2>
+            </div>
+            <label class="result-month-control">Month
+              <select id="resultsMonthSelect"></select>
+            </label>
+          </div>
+          <div id="recentResults" class="results-grid"></div>
+        </div>
+        <div class="rankings-card stats-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Rankings</p>
               <h2>Player Stats</h2>
             </div>
           </div>
@@ -166,13 +168,14 @@
         </div>
       </section>
 
-      <section id="media" class="content-section media-section">
-        <div class="section-title">
+      <section id="media" class="gallery-section">
+        <div class="section-head">
+          <p class="eyebrow">From the pitch</p>
           <h2>Photos</h2>
         </div>
-        <div class="photo-carousel" aria-label="AES FC photo slideshow">
+        <div class="photo-carousel gallery-grid" aria-label="AES FC photo gallery">
           <button id="photoPrev" class="photo-nav" type="button" aria-label="Previous photo">‹</button>
-          <div id="photoGrid" class="photo-track"></div>
+          <div id="photoGrid" class="gallery-grid"></div>
           <button id="photoNext" class="photo-nav" type="button" aria-label="Next photo">›</button>
         </div>
       </section>
@@ -421,7 +424,7 @@
       </div>
     </div>
 
-    <script src="config.js?v=20261009a"></script>
-    <script src="app.js?v=20261009a"></script>
+    <script src="config.js?v=20261009b"></script>
+    <script src="app.js?v=20261009b"></script>
   </body>
 </html>
