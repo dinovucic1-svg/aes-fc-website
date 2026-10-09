@@ -1515,6 +1515,26 @@ textarea { resize: vertical; }
 }
 
 @media (max-width: 900px) {
+  .admin-grid-two,
+  .admin-inline-form,
+  .admin-player-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-panel-heading {
+    display: grid;
+  }
+
+  .admin-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-tabs button {
+    flex: 0 0 auto;
+  }
+
   .admin-game-row {
     grid-template-columns: 1fr 1fr;
   }
@@ -1959,6 +1979,100 @@ textarea { resize: vertical; }
   font-weight: 900;
 }
 
+.admin-workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(11,45,99,.16);
+  border-radius: 8px;
+  background: rgba(249,244,232,.82);
+}
+
+.admin-tabs button {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 14px;
+  color: var(--grass-dark);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-tabs button.active {
+  color: #fff;
+  border-color: var(--grass-dark);
+  background: var(--navy);
+}
+
+.admin-tab-panel {
+  display: none;
+}
+
+.admin-tab-panel.active {
+  display: block;
+}
+
+.admin-panel-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(11,45,99,.14);
+}
+
+.admin-panel-heading h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.admin-panel-heading p {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.admin-grid-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-game-workspace,
+.admin-workspace-card {
+  border: 1px solid rgba(11,45,99,.14);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255,255,255,.76);
+}
+
+.admin-workspace-card + .admin-workspace-card,
+.admin-game-workspace .admin-subdrawer {
+  margin-top: 12px;
+}
+
+.admin-inline-form {
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, .6fr) auto;
+  align-items: end;
+}
+
+.admin-search {
+  display: block;
+  margin: 4px 0 14px;
+}
+
 .admin-subtitle {
   margin: 2px 16px 10px;
   color: var(--grass-dark);
@@ -2000,6 +2114,22 @@ th { color: var(--muted); }
   background: var(--danger);
   font-weight: 900;
   cursor: pointer;
+}
+
+.ghost {
+  min-height: 38px;
+  border: 1px solid rgba(11,45,99,.18);
+  border-radius: 6px;
+  padding: 9px 13px;
+  color: var(--grass-dark);
+  background: transparent;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ghost:disabled {
+  opacity: .42;
+  cursor: not-allowed;
 }
 
 .photo-form,
@@ -2120,6 +2250,70 @@ th { color: var(--muted); }
   grid-template-columns: minmax(180px, 1fr) minmax(130px, .55fr) minmax(260px, 1.2fr) auto auto;
   align-items: center;
   gap: 8px;
+}
+
+.admin-player-editor {
+  overflow: hidden;
+  border: 1px solid rgba(11,45,99,.14);
+  border-radius: 8px;
+  background: rgba(255,255,255,.82);
+}
+
+.admin-player-editor[open] {
+  border-color: rgba(225,29,46,.25);
+}
+
+.admin-player-editor summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 10px 12px;
+  color: var(--navy);
+  cursor: pointer;
+  list-style: none;
+}
+
+.admin-player-editor summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-player-editor summary::after {
+  content: "+";
+  color: var(--red);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.admin-player-editor[open] summary::after {
+  content: "–";
+}
+
+.admin-player-editor summary span {
+  font-weight: 900;
+}
+
+.admin-player-editor summary small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.admin-player-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.player-attribute-editor {
+  grid-column: 1 / -1;
+}
+
+.admin-player-editor-grid > .icon-button {
+  justify-self: start;
 }
 
 .guarantee-summary {
@@ -2837,6 +3031,21 @@ legend {
   .admin-photo { grid-template-columns: 68px minmax(0, 1fr); }
   .admin-photo button { grid-column: 1 / -1; }
   .admin-regular { grid-template-columns: 1fr; }
+  .admin-schedule-toolbar,
+  .batch-actions {
+    position: sticky;
+    bottom: 8px;
+    z-index: 12;
+    box-shadow: 0 10px 22px rgba(9,31,71,.14);
+  }
+  .admin-player-editor summary {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+  .admin-player-editor summary small {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
   .profile-basics,
   .profile-tags-grid {
     grid-template-columns: 1fr;

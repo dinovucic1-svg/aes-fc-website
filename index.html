@@ -174,20 +174,86 @@
               <button class="secondary" id="logoutAdmin" type="button">Log out</button>
             </div>
             <div id="adminCurrentGame" class="admin-current-game"></div>
-            <div class="admin-accordion">
-              <details class="admin-drawer">
-                <summary>Live game tracker</summary>
-                <div class="tracker-launch">
-                  <p>Open a scoring screen for the current game. Pick both teams before tracking starts.</p>
-                  <button class="secondary" id="openTracker" type="button">Open live tracker</button>
-                </div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Add/edit match results</summary>
-                <details class="admin-subdrawer">
-                  <summary>Publish new result</summary>
+            <div class="admin-workspace">
+              <nav class="admin-tabs" aria-label="Admin sections">
+                <button type="button" data-admin-tab="games" class="active">Games</button>
+                <button type="button" data-admin-tab="players">Players</button>
+                <button type="button" data-admin-tab="results">Results</button>
+                <button type="button" data-admin-tab="media">Media</button>
+                <button type="button" data-admin-tab="settings">Settings</button>
+              </nav>
+              <div class="admin-tab-panels">
+                <section class="admin-tab-panel active" data-admin-panel="games">
+                  <div class="admin-panel-heading">
+                    <div>
+                      <h3>Games</h3>
+                      <p>Manage upcoming fixtures, signups, cancellations, teams and live tracking from one workspace.</p>
+                    </div>
+                    <button class="secondary" id="openTracker" type="button">Open live tracker</button>
+                  </div>
+                  <div class="admin-grid-two">
+                    <div>
+                      <div class="admin-subtitle">Upcoming schedule</div>
+                      <div id="adminGamesList" class="admin-games-list"></div>
+                    </div>
+                    <div class="admin-game-workspace">
+                      <div class="admin-subtitle">Selected game workspace</div>
+                      <div class="admin-workspace-card">
+                        <h4>Registrations</h4>
+                        <div id="adminSignups" class="admin-table-wrap"></div>
+                      </div>
+                      <div class="admin-workspace-card">
+                        <h4>Cancellations</h4>
+                        <div id="adminCancellations" class="admin-table-wrap"></div>
+                      </div>
+                      <details class="admin-subdrawer">
+                        <summary>Add match</summary>
+                        <form id="newGameForm" class="game-form">
+                          <label>Game date<input name="game_date" type="date" required></label>
+                          <label>Start time<input name="start_time" type="time" value="21:00" required></label>
+                          <label>End time<input name="end_time" type="time" value="22:00" required></label>
+                          <label>Signup opens<input name="signup_opens_at" type="datetime-local" required></label>
+                          <label class="toggle-row"><input name="signup_open_now" type="checkbox"> Open signup immediately when saved</label>
+                          <label class="toggle-row"><input name="guest_delay_24h" type="checkbox"> Guests wait 24 hours before they can sign up</label>
+                          <label class="toggle-row"><input name="is_recurring" type="checkbox"> Recurring every week</label>
+                          <label>Location name<input name="location_name" value="NK Bili As ADB Pitch" required></label>
+                          <label>Location link<input name="location_url" type="url" value="https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8" required></label>
+                          <button class="secondary" type="submit">Add game</button>
+                        </form>
+                      </details>
+                    </div>
+                  </div>
+                </section>
+                <section class="admin-tab-panel" data-admin-panel="players">
+                  <div class="admin-panel-heading">
+                    <div>
+                      <h3>Players</h3>
+                      <p>Search and edit nationality, guaranteed weekdays and player attributes.</p>
+                    </div>
+                  </div>
+                  <form id="regularForm" class="regular-form admin-inline-form">
+                    <label>Add regular player<input name="regular_name" placeholder="Full name"></label>
+                    <label>Nationality<input name="regular_nationality" placeholder="Croatia"></label>
+                    <button class="secondary" type="submit">Add name</button>
+                  </form>
+                  <form id="profileForm" class="regular-form admin-inline-form">
+                    <label>Add profile only<input name="profile_name" placeholder="Full name"></label>
+                    <label>Nationality<input name="profile_nationality" placeholder="Croatia"></label>
+                    <button class="secondary" type="submit">Save profile</button>
+                  </form>
+                  <label class="admin-search">Search players<input id="adminPlayerSearch" type="search" placeholder="Type a name"></label>
+                  <div id="adminRegulars" class="admin-regulars"></div>
+                  <div id="adminProfiles" class="admin-regulars hidden"></div>
+                </section>
+                <section class="admin-tab-panel" data-admin-panel="results">
+                  <div class="admin-panel-heading">
+                    <div>
+                      <h3>Results</h3>
+                      <p>Publish a new result, review previous matches and create graphics.</p>
+                    </div>
+                  </div>
                   <form id="resultForm" class="result-form">
-                    <details class="form-subdrawer">
+                    <details class="form-subdrawer" open>
                       <summary>Match details</summary>
                       <label>Game date<input name="game_date" type="date" required></label>
                       <div class="score-grid">
@@ -213,98 +279,59 @@
                     </details>
                     <button class="secondary" type="submit">Add result</button>
                   </form>
-                </details>
-                <details class="admin-subdrawer">
-                  <summary>Edit past result</summary>
+                  <div class="admin-subtitle">Published results</div>
                   <div id="adminResults" class="admin-results"></div>
-                </details>
-              </details>
-              <details class="admin-drawer">
-                <summary>Player of the Month graphic</summary>
-                <div class="admin-potm-tool">
-                  <label>Month
-                    <select id="adminPlayerMonthSelect"></select>
-                  </label>
-                  <button class="secondary" type="button" data-admin-player-month-graphic>Create graphic</button>
-                </div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Monthly summary</summary>
-                <div class="admin-monthly-tool">
-                  <div class="admin-monthly-actions">
-                    <label>Month
-                      <select id="adminMonthlySummarySelect"></select>
-                    </label>
-                    <button class="secondary" type="button" data-download-monthly-summary>Download CSV</button>
-                    <button class="secondary" type="button" data-download-all-data>Export all data</button>
+                  <div class="admin-tools-row">
+                    <div class="admin-potm-tool">
+                      <label>Player of the Month
+                        <select id="adminPlayerMonthSelect"></select>
+                      </label>
+                      <button class="secondary compact" type="button" data-admin-player-month-graphic>Create graphic</button>
+                    </div>
+                    <div class="admin-monthly-tool">
+                      <label>Monthly export
+                        <select id="adminMonthlySummarySelect"></select>
+                      </label>
+                      <button class="secondary compact" type="button" data-download-monthly-summary>Download CSV</button>
+                      <button class="secondary compact" type="button" data-download-all-data>Export all data</button>
+                    </div>
                   </div>
                   <div id="adminMonthlySummary" class="monthly-summary"></div>
-                </div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Players signed up</summary>
-                <div id="adminSignups" class="admin-table-wrap"></div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Recent cancellations</summary>
-                <div id="adminCancellations" class="admin-table-wrap"></div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Edit match dates</summary>
-                <details class="admin-subdrawer">
-                  <summary>Add match</summary>
-                  <form id="newGameForm" class="game-form">
-                    <label>Game date<input name="game_date" type="date" required></label>
-                    <label>Start time<input name="start_time" type="time" value="21:00" required></label>
-                    <label>End time<input name="end_time" type="time" value="22:00" required></label>
-                    <label>Signup opens<input name="signup_opens_at" type="datetime-local" required></label>
-                    <label class="toggle-row"><input name="signup_open_now" type="checkbox"> Open signup immediately when saved</label>
-                    <label class="toggle-row"><input name="guest_delay_24h" type="checkbox"> Guests wait 24 hours before they can sign up</label>
-                    <label class="toggle-row"><input name="is_recurring" type="checkbox"> Recurring every week</label>
-                    <label>Location name<input name="location_name" value="NK Bili As ADB Pitch" required></label>
-                    <label>Location link<input name="location_url" type="url" value="https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8" required></label>
-                    <button class="secondary" type="submit">Add game</button>
+                </section>
+                <section class="admin-tab-panel" data-admin-panel="media">
+                  <div class="admin-panel-heading">
+                    <div>
+                      <h3>Media</h3>
+                      <p>Add team photos and keep match media organised.</p>
+                    </div>
+                  </div>
+                  <form id="photoForm" class="photo-form">
+                    <label>Photo title<input name="title" placeholder="Wednesday game"></label>
+                    <label>Photo path or URL<input name="url" placeholder="public/photos/your-photo.jpg"></label>
+                    <label>Or upload a small photo<input name="file" type="file" accept="image/*"></label>
+                    <label>Caption<input name="caption" placeholder="Optional caption"></label>
+                    <button class="secondary" type="submit">Add photo</button>
                   </form>
-                </details>
-                <div class="admin-subtitle">Upcoming schedule</div>
-                <div id="adminGamesList" class="admin-games-list"></div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Edit description text</summary>
-                <form id="settingsForm" class="settings-form">
-                  <label>Rules title<input name="rules_title" required></label>
-                  <label>Rules text<textarea name="rules_text" rows="10" required></textarea></label>
-                  <button class="secondary" type="submit">Save text</button>
-                </form>
-              </details>
-              <details class="admin-drawer">
-                <summary>Regular player list</summary>
-                <form id="regularForm" class="regular-form">
-                  <label>Add regular player<input name="regular_name" placeholder="Full name"></label>
-                  <label>Nationality<input name="regular_nationality" placeholder="Croatia"></label>
-                  <button class="secondary" type="submit">Add name</button>
-                </form>
-                <div id="adminRegulars" class="admin-regulars"></div>
-                <div class="admin-subtitle">Player strengths & weaknesses</div>
-                <p class="admin-help">Open a player profile below to set nationality plus strengths and weaknesses.</p>
-                <form id="profileForm" class="regular-form">
-                  <label>Player name<input name="profile_name" placeholder="Full name"></label>
-                  <label>Nationality<input name="profile_nationality" placeholder="Croatia"></label>
-                  <button class="secondary" type="submit">Save profile</button>
-                </form>
-                <div id="adminProfiles" class="admin-regulars"></div>
-              </details>
-              <details class="admin-drawer">
-                <summary>Add/remove photos</summary>
-                <form id="photoForm" class="photo-form">
-                  <label>Photo title<input name="title" placeholder="Wednesday game"></label>
-                  <label>Photo path or URL<input name="url" placeholder="public/photos/your-photo.jpg"></label>
-                  <label>Or upload a small photo<input name="file" type="file" accept="image/*"></label>
-                  <label>Caption<input name="caption" placeholder="Optional caption"></label>
-                  <button class="secondary" type="submit">Add photo</button>
-                </form>
-                <div id="adminPhotos" class="admin-photos"></div>
-              </details>
+                  <div id="adminPhotos" class="admin-photos"></div>
+                </section>
+                <section class="admin-tab-panel" data-admin-panel="settings">
+                  <div class="admin-panel-heading">
+                    <div>
+                      <h3>Settings</h3>
+                      <p>Update public rules and review the recurring weekly schedule.</p>
+                    </div>
+                  </div>
+                  <div class="admin-workspace-card recurring-summary">
+                    <h4>Recurring signup schedule</h4>
+                    <p>Signups open Saturdays at 09:00 Split time for Monday 20:00 at Bili’s Pitch, Wednesday 21:00 at Gusar and Friday 20:00 at Gusar.</p>
+                  </div>
+                  <form id="settingsForm" class="settings-form">
+                    <label>Rules title<input name="rules_title" required></label>
+                    <label>Rules text<textarea name="rules_text" rows="10" required></textarea></label>
+                    <button class="secondary" type="submit">Save text</button>
+                  </form>
+                </section>
+              </div>
             </div>
           </div>
           <p id="adminMessage" class="form-message" role="status"></p>

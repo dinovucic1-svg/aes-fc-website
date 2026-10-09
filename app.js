@@ -433,11 +433,14 @@ function guaranteedAppliesToGame(regular = {}, game = state.game) {
 
 function guaranteedCountsByDay(useDom = false) {
   const counts = Object.fromEntries(WEEKLY_GAME_DAYS.map(([key]) => [key, 0]));
-  const rows = document.querySelectorAll("#adminRegulars [data-regular-row]");
+  const rows = document.querySelectorAll("#adminRegulars [data-player-row], #adminRegulars [data-regular-row]");
   if (useDom && rows.length) {
-    rows.forEach((row) => selectedGuaranteedGames(row).forEach((key) => {
-      counts[key] = (counts[key] || 0) + 1;
-    }));
+    rows.forEach((row) => {
+      if (row.querySelector("[name='regular_is_active']")?.checked === false) return;
+      selectedGuaranteedGames(row).forEach((key) => {
+        counts[key] = (counts[key] || 0) + 1;
+      });
+    });
     return counts;
   }
   state.regulars.forEach((regular) => guaranteedGamesForRegular(regular).forEach((key) => {
@@ -688,12 +691,7 @@ async function loadSignups(gameId) {
 
 async function loadCancelledSignups(gameId) {
   if (!hasAdminAccess()) {
-    const { data, error } = await db.rpc("aesfc_public_signups", {
-      p_game_id: gameId,
-      p_include_cancelled: true
-    });
-    if (error) throw error;
-    return (data || []).filter((signup) => signup.cancelled_at);
+    return [];
   }
   const { data, error } = await db
     .from("aesfc_signups")
@@ -1878,6 +1876,12 @@ function renderCancelSelector() {
   `;
   select.disabled = cancellable.length === 0;
   if ([...select.options].some((option) => option.value === current)) select.value = current;
+  const message = el("cancelSignupMessage");
+  if (message && !cancellable.length && state.signups.length) {
+    setMessage(message, "Only signups made on this browser can be cancelled here. For older or guaranteed signups, message an organiser and they can cancel it from Admin.");
+  } else if (message && !message.classList.contains("error")) {
+    setMessage(message, "");
+  }
 }
 
 function selectedName(selectName, manualName) {
@@ -2282,6 +2286,7 @@ function renderAdminGamesList(options = {}) {
     <div class="admin-schedule-toolbar">
       <p>Saturday 09:00 Europe/Zagreb opens the following Monday, Wednesday and Friday together.</p>
       <button class="secondary compact" type="button" data-save-schedule disabled>Save schedule changes</button>
+      <button class="ghost compact" type="button" data-discard-schedule disabled>Discard</button>
       <span id="scheduleDirtyNote" class="dirty-note">No unsaved changes</span>
     </div>
     ${[...grouped.entries()].map(([weekStart, weekGames]) => `
@@ -2587,8 +2592,43 @@ function renderAdminCancellations(signups) {
   `;
 }
 
+function adminPlayerEditorRows() {
+  const rows = new Map();
+  (state.playerProfiles || []).forEach((profile) => {
+    const fullName = splitFullName(profile.full_name).fullName;
+    if (!fullName) return;
+    rows.set(normalizeName(fullName), {
+      full_name: fullName,
+      nationality: profile.nationality || "",
+      profile_tags: profileTagsFor(profile),
+      profile_id: profile.id || "",
+      regular_id: "",
+      is_regular: false,
+      guaranteed_games: []
+    });
+  });
+  (state.regulars || []).forEach((regular) => {
+    const fullName = splitFullName(regular.full_name).fullName;
+    if (!fullName) return;
+    const key = normalizeName(fullName);
+    const existing = rows.get(key) || {};
+    rows.set(key, {
+      ...existing,
+      full_name: fullName,
+      nationality: regular.nationality || existing.nationality || "",
+      profile_tags: existing.profile_tags || {},
+      profile_id: existing.profile_id || "",
+      regular_id: regular.id || "",
+      is_regular: regular.is_active !== false,
+      guaranteed_games: guaranteedGamesForRegular(regular)
+    });
+  });
+  return [...rows.values()].sort((a, b) => a.full_name.localeCompare(b.full_name));
+}
+
 function renderAdminRegulars() {
   const counts = guaranteedCountsByDay(false);
+  const players = adminPlayerEditorRows();
   const warnings = WEEKLY_GAME_DAYS
     .filter(([key]) => counts[key] > 12)
     .map(([key, label]) => `${label} has ${counts[key] || 0} guaranteed players; players over 12 will become subs.`);
@@ -2600,28 +2640,44 @@ function renderAdminRegulars() {
       `).join("")}
     </div>
     ${warnings.length ? `<p class="admin-warning">${escapeHtml(warnings.join(" "))}</p>` : ""}
-    ${state.regulars.map((regular) => {
-      const guaranteedGames = guaranteedGamesForRegular(regular);
+    ${players.map((player) => {
+      const guaranteedGames = normalizeArray(player.guaranteed_games);
+      const summaryLabel = player.is_regular
+        ? `Regular · ${guaranteedGames.length ? guaranteedGamesLabel({ guaranteed_games: guaranteedGames }) : "No guarantees"}`
+        : "Profile only";
       return `
-    <div class="admin-regular" data-regular-row="${regular.id}">
-      <input name="regular_full_name" value="${escapeHtml(regular.full_name)}" aria-label="Regular player full name">
-      <input name="regular_nationality" value="${escapeHtml(regular.nationality || "")}" placeholder="Nationality" aria-label="Regular player nationality">
-      <fieldset class="guarantee-controls" aria-label="Guaranteed games for ${escapeHtml(regular.full_name)}">
-        <legend>Guaranteed: ${escapeHtml(guaranteedGamesLabel(regular))}</legend>
-        <label><input name="regular_guaranteed_all" type="checkbox" ${guaranteedGames.length === WEEKLY_GAME_DAYS.length ? "checked" : ""}> All</label>
-        ${WEEKLY_GAME_DAYS.map(([key, label]) => `
-          <label><input name="regular_guaranteed_game" type="checkbox" value="${escapeHtml(key)}" ${guaranteedGames.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>
-        `).join("")}
-      </fieldset>
-      <button class="icon-button" type="button" data-remove-regular="${regular.id}">Remove</button>
-    </div>
-  `; }).join("") || "<p>No regular names yet.</p>"}
+        <details class="admin-player-editor" data-player-row data-regular-row="${escapeHtml(player.regular_id || "")}" data-profile-row="${escapeHtml(player.profile_id || "")}" data-original-name="${escapeHtml(player.full_name)}">
+          <summary>
+            <span>${escapeHtml(player.full_name)}</span>
+            <small>${escapeHtml(summaryLabel)}</small>
+          </summary>
+          <div class="admin-player-editor-grid">
+            <label>Player name<input name="regular_full_name" value="${escapeHtml(player.full_name)}" aria-label="Player full name"></label>
+            <label>Nationality<input name="regular_nationality" value="${escapeHtml(player.nationality || "")}" placeholder="Croatia" aria-label="Player nationality"></label>
+            <label class="toggle-row"><input name="regular_is_active" type="checkbox" ${player.is_regular ? "checked" : ""}> Regular list player</label>
+            <fieldset class="guarantee-controls" aria-label="Guaranteed games for ${escapeHtml(player.full_name)}">
+              <legend>Guaranteed games</legend>
+              <label><input name="regular_guaranteed_all" type="checkbox" ${guaranteedGames.length === WEEKLY_GAME_DAYS.length ? "checked" : ""}> All</label>
+              ${WEEKLY_GAME_DAYS.map(([key, label]) => `
+                <label><input name="regular_guaranteed_game" type="checkbox" value="${escapeHtml(key)}" ${guaranteedGames.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>
+              `).join("")}
+            </fieldset>
+            <div class="profile-editor player-attribute-editor">
+              ${renderProfileTagControls(player.profile_tags || {})}
+            </div>
+            ${player.regular_id ? `<button class="icon-button" type="button" data-remove-regular="${escapeHtml(player.regular_id)}">Remove from regulars</button>` : ""}
+          </div>
+        </details>
+      `;
+    }).join("") || "<p>No players found yet.</p>"}
     <div class="batch-actions">
       <button class="secondary" type="button" data-save-regulars disabled>Save changes</button>
+      <button class="ghost" type="button" data-discard-regulars disabled>Discard</button>
       <span id="regularsDirtyNote" class="dirty-note">No unsaved changes</span>
     </div>
   `;
   state.regularsDirty = false;
+  filterAdminPlayers();
 }
 
 function markRegularsDirty() {
@@ -2636,6 +2692,8 @@ function markRegularsDirty() {
   }
   const save = document.querySelector("[data-save-regulars]");
   if (save) save.disabled = false;
+  const discard = document.querySelector("[data-discard-regulars]");
+  if (discard) discard.disabled = false;
   const note = el("regularsDirtyNote");
   if (note) note.textContent = "Unsaved changes";
 }
@@ -2643,12 +2701,18 @@ function markRegularsDirty() {
 async function saveRegularsBatch() {
   assertAdmin();
   if (state.savingRegulars) return;
-  const rows = [...document.querySelectorAll("#adminRegulars [data-regular-row]")];
+  const rows = [...document.querySelectorAll("#adminRegulars [data-player-row]")];
   const drafts = rows.map((row) => ({
     row,
-    id: row.dataset.regularRow,
+    id: row.dataset.regularRow || "",
+    profileId: row.dataset.profileRow || "",
     payload: regularPayloadFromRow(row),
-    baseline: regularBaselinePayload((state.regulars || []).find((regular) => String(regular.id) === String(row.dataset.regularRow)))
+    baseline: regularBaselinePayload(
+      (state.regulars || []).find((regular) => String(regular.id) === String(row.dataset.regularRow)),
+      (state.playerProfiles || []).find((profile) => String(profile.id) === String(row.dataset.profileRow)) ||
+        (state.playerProfiles || []).find((profile) => normalizeName(profile.full_name) === normalizeName(row.dataset.originalName || "")),
+      row.dataset.originalName || ""
+    )
   }));
   const validation = validateRegularDrafts(drafts);
   if (validation.length) throw new Error(validation.join(" "));
@@ -2665,23 +2729,45 @@ async function saveRegularsBatch() {
   const failures = [];
   try {
     for (const draft of changed) {
-      const { full_name: fullName, nationality, guaranteed_games: guaranteedGames } = draft.payload;
+      const {
+        full_name: fullName,
+        nationality,
+        guaranteed_games: guaranteedGames,
+        is_regular: isRegular,
+        profile_tags: profileTags
+      } = draft.payload;
       try {
-        const { error } = await db.from("aesfc_regulars").update({
-          full_name: fullName,
-          nationality,
-          guaranteed_signup: guaranteedGames.length > 0,
-          guaranteed_games: guaranteedGames
-        }).eq("id", draft.id);
-        if (error) throw error;
-        await upsertPlayerProfile(fullName, nationality);
-        const regular = (state.regulars || []).find((item) => String(item.id) === String(draft.id));
-        if (regular) {
-          regular.full_name = fullName;
-          regular.nationality = nationality;
-          regular.guaranteed_signup = guaranteedGames.length > 0;
-          regular.guaranteed_games = guaranteedGames;
+        if (isRegular) {
+          if (draft.id) {
+            const { error } = await db.from("aesfc_regulars").update({
+              full_name: fullName,
+              nationality,
+              is_active: true,
+              guaranteed_signup: guaranteedGames.length > 0,
+              guaranteed_games: guaranteedGames
+            }).eq("id", draft.id);
+            if (error) throw new Error(`regular list: ${error.message}`);
+          } else {
+            const sortOrder = (state.regulars || []).length + 1;
+            const { error } = await db.from("aesfc_regulars").upsert({
+              full_name: fullName,
+              nationality,
+              is_active: true,
+              sort_order: sortOrder,
+              guaranteed_signup: guaranteedGames.length > 0,
+              guaranteed_games: guaranteedGames
+            }, { onConflict: "full_name" });
+            if (error) throw new Error(`regular list: ${error.message}`);
+          }
+        } else if (draft.id) {
+          const { error } = await db.from("aesfc_regulars").update({
+            is_active: false,
+            guaranteed_signup: false,
+            guaranteed_games: []
+          }).eq("id", draft.id);
+          if (error) throw new Error(`regular list: ${error.message}`);
         }
+        await upsertPlayerProfile(fullName, nationality, profileTags);
       } catch (error) {
         failures.push(`${fullName}: ${error.message}`);
       }
@@ -2696,7 +2782,9 @@ async function saveRegularsBatch() {
     throw new Error(`Regulars save incomplete. Saved ${savedCount} row${savedCount === 1 ? "" : "s"}; failed ${failures.length}: ${failures.join(" | ")}`);
   }
   state.regulars = await loadRegulars();
+  state.playerProfiles = await loadPlayerProfiles();
   renderAdminRegulars();
+  renderAdminProfiles();
   renderPlayerSelectors();
   setMessage(el("adminMessage"), `Regular player changes saved (${changed.length} row${changed.length === 1 ? "" : "s"}).`);
 }
@@ -2704,21 +2792,28 @@ async function saveRegularsBatch() {
 function regularPayloadFromRow(row) {
   const fullName = splitFullName(row.querySelector("[name='regular_full_name']")?.value || "").fullName;
   const nationality = row.querySelector("[name='regular_nationality']")?.value.trim() || "";
+  const guaranteedGames = normalizeArray(selectedGuaranteedGames(row));
+  const isRegular = row.querySelector("[name='regular_is_active']")?.checked !== false;
   return {
     full_name: fullName,
     nationality,
-    guaranteed_games: normalizeArray(selectedGuaranteedGames(row)),
-    guaranteed_signup: selectedGuaranteedGames(row).length > 0
+    is_regular: isRegular,
+    guaranteed_games: isRegular ? guaranteedGames : [],
+    guaranteed_signup: isRegular && guaranteedGames.length > 0,
+    profile_tags: collectProfileTags(row)
   };
 }
 
-function regularBaselinePayload(regular = {}) {
+function regularBaselinePayload(regular = {}, profile = {}, fallbackName = "") {
   const games = normalizeArray(guaranteedGamesForRegular(regular));
+  const fullName = splitFullName(regular?.full_name || profile?.full_name || fallbackName || "").fullName;
   return {
-    full_name: splitFullName(regular.full_name || "").fullName,
-    nationality: regular.nationality || "",
+    full_name: fullName,
+    nationality: regular?.nationality || profile?.nationality || "",
+    is_regular: regular?.is_active !== false && Boolean(regular?.id),
     guaranteed_games: games,
-    guaranteed_signup: games.length > 0
+    guaranteed_signup: Boolean(regular?.id) && games.length > 0,
+    profile_tags: profileTagsFor(profile)
   };
 }
 
@@ -2736,10 +2831,30 @@ function validateRegularDrafts(drafts = []) {
   return [...new Set(errors)];
 }
 
+function filterAdminPlayers() {
+  const search = normalizeName(el("adminPlayerSearch")?.value || "");
+  document.querySelectorAll("#adminRegulars [data-player-row]").forEach((row) => {
+    const name = normalizeName(row.querySelector("[name='regular_full_name']")?.value || row.dataset.originalName || "");
+    row.classList.toggle("hidden", Boolean(search && !name.includes(search)));
+  });
+}
+
+function selectAdminTab(tabName) {
+  if (!tabName) return;
+  document.querySelectorAll("[data-admin-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.adminTab === tabName);
+  });
+  document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.adminPanel === tabName);
+  });
+}
+
 function markScheduleDirty() {
   state.scheduleDirty = true;
   const save = document.querySelector("[data-save-schedule]");
   if (save) save.disabled = false;
+  const discard = document.querySelector("[data-discard-schedule]");
+  if (discard) discard.disabled = false;
   const note = el("scheduleDirtyNote");
   if (note) note.textContent = "Unsaved changes";
 }
@@ -3218,9 +3333,12 @@ async function addResult(event) {
   }
   try {
     assertAdmin();
+    const resultDate = String(data.get("game_date") || "");
+    const existing = (state.results || []).find((result) => result.is_active !== false && String(result.game_date) === resultDate);
+    if (existing && !window.confirm(`Replace the published result for ${formatShortResultDate(resultDate)}?`)) return;
     setMessage(el("adminMessage"), "Preparing result...");
     const { error } = await db.from("aesfc_results").upsert({
-      game_date: data.get("game_date"),
+      game_date: resultDate,
       team_a_players: sortPlayerNames(teamA),
       team_b_players: sortPlayerNames(teamB),
       team_a_score: Number(data.get("team_a_score")),
@@ -4244,10 +4362,17 @@ async function handleAdminClicks(event) {
   const downloadMonthly = event.target.hasAttribute("data-download-monthly-summary");
   const downloadAllData = event.target.hasAttribute("data-download-all-data");
   const saveRegulars = event.target.hasAttribute("data-save-regulars");
+  const discardRegulars = event.target.hasAttribute("data-discard-regulars");
   const saveSchedule = event.target.hasAttribute("data-save-schedule");
+  const discardSchedule = event.target.hasAttribute("data-discard-schedule");
   const showMoreGames = event.target.hasAttribute("data-show-more-games");
+  const adminTab = event.target.dataset.adminTab;
   try {
     assertAdmin();
+    if (adminTab) {
+      selectAdminTab(adminTab);
+      return;
+    }
     if (showMoreGames) {
       state.showAllAdminGames = true;
       renderAdminGamesList({ preserveDraft: true });
@@ -4257,8 +4382,20 @@ async function handleAdminClicks(event) {
       await saveRegularsBatch();
       return;
     }
+    if (discardRegulars) {
+      if (!confirmDiscardUnsavedAdminEdits("discard player edits")) return;
+      state.regularsDirty = false;
+      renderAdminRegulars();
+      return;
+    }
     if (saveSchedule) {
       await saveScheduleBatch();
+      return;
+    }
+    if (discardSchedule) {
+      if (!confirmDiscardUnsavedAdminEdits("discard schedule edits")) return;
+      state.scheduleDirty = false;
+      renderAdminGamesList();
       return;
     }
     if (graphicResultId) {
@@ -4407,9 +4544,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("regularForm").addEventListener("submit", addRegular);
   el("profileForm").addEventListener("submit", addProfile);
   el("adminTools").addEventListener("click", handleAdminClicks);
+  el("adminPlayerSearch")?.addEventListener("input", filterAdminPlayers);
   el("adminRegulars").addEventListener("input", markRegularsDirty);
   el("adminRegulars").addEventListener("change", (event) => {
-    const row = event.target.closest("[data-regular-row]");
+    const row = event.target.closest("[data-player-row], [data-regular-row]");
     if (row && event.target.name === "regular_guaranteed_all") {
       row.querySelectorAll("[name='regular_guaranteed_game']").forEach((checkbox) => {
         checkbox.checked = event.target.checked;

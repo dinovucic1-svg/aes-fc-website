@@ -58,16 +58,9 @@ create or replace function public.aesfc_public_signups(p_game_id uuid, p_include
 returns table (
   id uuid,
   game_id uuid,
-  signup_group uuid,
   first_name text,
   last_name text,
   nationality text,
-  email text,
-  phone text,
-  player_count int,
-  comments text,
-  signed_up_by text,
-  played_before text,
   created_at timestamptz,
   cancelled_at timestamptz
 )
@@ -79,25 +72,15 @@ as $$
   select
     s.id,
     s.game_id,
-    s.signup_group,
     s.first_name,
     s.last_name,
     s.nationality,
-    s.email,
-    s.phone,
-    s.player_count,
-    s.comments,
-    s.signed_up_by,
-    s.played_before,
     s.created_at,
     s.cancelled_at
   from public.aesfc_signups s
   join public.aesfc_games g on g.id = s.game_id
   where s.game_id = p_game_id
-    and (
-      p_include_cancelled
-      or s.cancelled_at is null
-    )
+    and s.cancelled_at is null
     and coalesce(g.game_status, 'active') <> 'removed'
   order by s.created_at asc, s.id asc;
 $$;
