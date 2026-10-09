@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261009f">
+    <link rel="stylesheet" href="styles.css?v=20261009g">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -127,13 +127,14 @@
               <p class="eyebrow">Live list</p>
               <h2 id="liveListTitle">Selected game players</h2>
             </div>
+            <strong id="playingSummary" class="playing-summary">Playing · 0/12</strong>
           </div>
           <p id="listGameSummary" class="compact-game-summary hidden"></p>
           <label id="listGameSelectWrap" class="game-select-wrap live-list-select hidden">
             <select id="listGameSelect"></select>
           </label>
           <div class="list-block">
-            <h3>Playing <span id="playingCount">0</span>/12</h3>
+            <h3>Playing</h3>
             <ol id="playingList" class="signup-list"></ol>
           </div>
           <div class="list-block">
@@ -160,7 +161,7 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Rankings</p>
-              <h2>Player Stats</h2>
+              <h2>Rankings</h2>
             </div>
           </div>
           <div id="playerStatsTable" class="stats-table-wrap"></div>
@@ -363,6 +364,11 @@
         </div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <span>AES FC · Split · Since 2015.</span>
+      <span id="footerLinks" class="footer-links"></span>
+    </footer>
 
     <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Photo preview">
       <button id="closeLightbox" type="button" aria-label="Close photo preview">×</button>

@@ -1504,10 +1504,17 @@ function renderPlayerStats(results) {
   const movement = playerStatsMovement(scopedResults, mode, minimumWinAppearances);
   const tabs = [
     ["overall", "Overall"],
-    ["scorers", "Top Scorer"],
-    ["assists", "Top Assist"],
+    ["scorers", "Goals"],
+    ["assists", "Assists"],
     ["wins", "Win %"]
   ];
+  const metricConfig = {
+    overall: ["Pts", (row) => row.points],
+    scorers: ["Goals", (row) => row.goals],
+    assists: ["Assists", (row) => row.assists],
+    wins: ["Win %", (row) => formatPercent(row.winPct)]
+  };
+  const [metricLabel, metricValue] = metricConfig[mode] || metricConfig.overall;
   const controlsMarkup = `
     <div class="stats-controls">
       <label>Stats period
@@ -1523,7 +1530,28 @@ function renderPlayerStats(results) {
       </div>
     </div>
   `;
-  const tableMarkup = (rows) => `
+  const summaryMarkup = (rows) => `
+    <table class="stats-table stats-summary-table">
+      <thead><tr><th>#</th><th>Player</th><th>${escapeHtml(metricLabel)}</th></tr></thead>
+      <tbody>
+        ${rows.slice(0, 5).map((row, index) => {
+          const nationality = nationalityForName(row.name);
+          const flag = nationalityFlag(nationality);
+          return `
+            <tr>
+              <td class="rank-cell">${index + 1}</td>
+              <td class="player-cell ${flag ? "has-flag" : ""}">
+                <strong>${escapeHtml(row.name)}</strong>
+                ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
+              </td>
+              <td class="metric-cell"><strong>${escapeHtml(metricValue(row))}</strong></td>
+            </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+  const detailMarkup = (rows) => `
     <table class="stats-table">
       <thead><tr><th>#</th><th></th><th>Player</th><th>Pts</th><th>Form</th><th>Win %</th><th>Apps</th><th>W</th><th>D</th><th>G</th><th>A</th><th>G+A</th><th>G/game</th><th>A/game</th></tr></thead>
       <tbody>
@@ -1559,13 +1587,12 @@ function renderPlayerStats(results) {
     : `No player stats yet for ${monthLabel(state.statsMonth)}.`;
   el("playerStatsTable").innerHTML = stats.length ? `
     ${controlsMarkup}
-    ${tableMarkup(stats.slice(0, 10))}
-    ${isAllTime && stats.length > 10 ? `
-      <details class="stats-expand">
-        <summary>Expand full stats list</summary>
-        ${tableMarkup(stats)}
-      </details>
-    ` : ""}
+    ${summaryMarkup(stats)}
+    <details class="stats-expand full-rankings">
+      <summary>View full rankings</summary>
+      <p class="stats-detail-note">Detailed view keeps appearances, wins, draws, goals, assists, averages and rank movement. Form shows recent match results: W = win, D = draw, L = loss.</p>
+      ${detailMarkup(stats)}
+    </details>
   ` : `${controlsMarkup}<p class="empty-note">${escapeHtml(emptyText)}</p>`;
 }
 
@@ -1595,8 +1622,10 @@ function playerStatsMovement(results = [], mode = "overall", minimumWinAppearanc
 
 function renderRankMovement(movement) {
   if (!movement || movement.direction === "same") return "<span class=\"rank-move same\" aria-label=\"same rank\">–</span>";
-  if (movement.direction === "up") return `<span class="rank-move up" aria-label="moved up">▲ ${movement.delta}</span>`;
-  if (movement.direction === "down") return `<span class="rank-move down" aria-label="moved down">▼ ${movement.delta}</span>`;
+  const upIcon = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 2l4 5H7v3H5V7H2z"></path></svg>`;
+  const downIcon = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 10L2 5h3V2h2v3h3z"></path></svg>`;
+  if (movement.direction === "up") return `<span class="rank-move up" aria-label="moved up">${upIcon}<span>${movement.delta}</span></span>`;
+  if (movement.direction === "down") return `<span class="rank-move down" aria-label="moved down">${downIcon}<span>${movement.delta}</span></span>`;
   return "<span class=\"rank-move same\" aria-label=\"same rank\">–</span>";
 }
 
@@ -1817,7 +1846,8 @@ function renderLists() {
       : "Selected game";
     el("liveListTitle").textContent = `${day}’s players`;
   }
-  el("playingCount").textContent = playing.length;
+  const capacity = Number(state.game?.capacity || 12);
+  if (el("playingSummary")) el("playingSummary").textContent = `Playing · ${playing.length}/${capacity}`;
   el("subsCount").textContent = subs.length;
   el("playingList").innerHTML = playing.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No players yet</li>";
   el("subsList").innerHTML = subs.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No subs yet</li>";
