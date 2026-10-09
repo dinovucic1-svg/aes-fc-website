@@ -1,6 +1,8 @@
 const cfg = window.AES_CONFIG || {};
-const configured = cfg.supabaseUrl && !cfg.supabaseUrl.includes("PASTE_") && cfg.supabaseAnonKey && !cfg.supabaseAnonKey.includes("PASTE_");
-const db = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+const params = new URLSearchParams(window.location.search);
+const DEMO_MODE = params.get("demo") === "1" || params.get("demo") === "true";
+const configured = !DEMO_MODE && cfg.supabaseUrl && !cfg.supabaseUrl.includes("PASTE_") && cfg.supabaseAnonKey && !cfg.supabaseAnonKey.includes("PASTE_");
+const db = configured && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
 
 const ADMIN_PASSWORD = "AESfc2015";
 const SIGNUP_PASSWORD = "2015";
@@ -67,28 +69,15 @@ const PERMANENT_RECURRING_SLOTS = [
   }
 ];
 const NATIONALITY_FLAGS = {
-  argentina: "🇦🇷",
-  australia: "🇦🇺",
-  belarus: "🇧🇾",
-  canada: "🇨🇦",
-  chile: "🇨🇱",
-  croatia: "🇭🇷",
-  england: "🇬🇧",
-  france: "🇫🇷",
-  germany: "🇩🇪",
-  israel: "🇮🇱",
-  italy: "🇮🇹",
-  "new zealand": "🇳🇿",
-  "north macedonia": "🇲🇰",
-  romania: "🇷🇴",
-  russia: "🇷🇺",
-  ukraine: "🇺🇦",
-  uk: "🇬🇧",
-  "great britain": "🇬🇧",
-  "united kingdom": "🇬🇧",
-  usa: "🇺🇸",
-  "united states": "🇺🇸",
-  "united states of america": "🇺🇸"
+  argentina: { code: "ar", label: "Argentina" },
+  australia: { code: "au", label: "Australia" },
+  croatia: { code: "hr", label: "Croatia" },
+  england: { code: "gb", label: "United Kingdom" },
+  france: { code: "fr", label: "France" },
+  ukraine: { code: "ua", label: "Ukraine" },
+  uk: { code: "gb", label: "United Kingdom" },
+  "great britain": { code: "gb", label: "United Kingdom" },
+  "united kingdom": { code: "gb", label: "United Kingdom" }
 };
 const DEFAULT_RULES_TITLE = "Signup rules";
 const DEFAULT_RULES_TEXT = `Only Dino, Igor, Michael and Miro can share the signup sheet link. If you have access to the signup link, please keep it private. This helps us know who has access, keep contact details available, and manage updates properly.
@@ -108,6 +97,151 @@ const fallbackPhotos = [
 ];
 
 const fallbackResults = [];
+
+const demoPhotos = [
+  { id: "demo-photo-1", title: "AES FC team photo", url: "preview/assets/aesfc-current-photo.jpg", caption: "Sample gallery photo" }
+];
+
+const demoGames = [
+  {
+    id: "demo-mon-open",
+    game_date: "2026-10-12",
+    start_time: "20:00",
+    end_time: "21:00",
+    location_name: "Bili's Pitch",
+    location_url: MAP_URL,
+    signup_opens_at: "2026-10-03T07:00:00.000Z",
+    is_recurring: true,
+    is_active: true,
+    game_status: "active",
+    guest_delay_hours: 0
+  },
+  {
+    id: "demo-wed-full",
+    game_date: "2026-10-14",
+    start_time: "21:00",
+    end_time: "22:00",
+    location_name: "Gusar",
+    location_url: GUSAR_MAP_URL,
+    signup_opens_at: "2026-10-03T07:00:00.000Z",
+    is_recurring: true,
+    is_active: true,
+    game_status: "active",
+    guest_delay_hours: 24
+  },
+  {
+    id: "demo-fri-closed",
+    game_date: "2026-10-16",
+    start_time: "20:00",
+    end_time: "21:00",
+    location_name: "Gusar",
+    location_url: GUSAR_MAP_URL,
+    signup_opens_at: "2026-10-10T07:00:00.000Z",
+    is_recurring: true,
+    is_active: true,
+    game_status: "active",
+    guest_delay_hours: 24
+  },
+  {
+    id: "demo-fri-cancelled",
+    game_date: "2026-10-23",
+    start_time: "20:00",
+    end_time: "21:00",
+    location_name: "Gusar",
+    location_url: GUSAR_MAP_URL,
+    signup_opens_at: "2026-10-17T07:00:00.000Z",
+    is_recurring: true,
+    is_active: false,
+    game_status: "skipped",
+    guest_delay_hours: 24
+  }
+];
+
+const demoRegulars = [
+  { id: "regular-dino", full_name: "Dino Vučić", nationality: "Croatia", is_active: true, guaranteed_signup: true, guaranteed_games: ["monday", "wednesday"] },
+  { id: "regular-flo", full_name: "Flo Psaïla", nationality: "France", is_active: true, guaranteed_signup: true, guaranteed_games: ["monday", "friday"] },
+  { id: "regular-igor", full_name: "Igor Sadovoi", nationality: "Croatia", is_active: true, guaranteed_signup: false, guaranteed_games: [] },
+  { id: "regular-michael", full_name: "Michael Freer", nationality: "United Kingdom", is_active: true, guaranteed_signup: false, guaranteed_games: [] },
+  { id: "regular-agustin", full_name: "Agustin Fontanilla", nationality: "Argentina", is_active: true, guaranteed_signup: false, guaranteed_games: [] },
+  { id: "regular-oscar", full_name: "Oscar Narvaez", nationality: "Australia", is_active: true, guaranteed_signup: false, guaranteed_games: [] },
+  { id: "regular-andrii", full_name: "Andrii Frolov", nationality: "Ukraine", is_active: true, guaranteed_signup: false, guaranteed_games: [] },
+  { id: "regular-long", full_name: "Maximilian Alexander Montgomery", nationality: "United Kingdom", is_active: true, guaranteed_signup: false, guaranteed_games: [] }
+];
+
+const demoPlayerProfiles = demoRegulars.map((regular) => ({
+  id: `profile-${regular.id}`,
+  full_name: regular.full_name,
+  nationality: regular.nationality,
+  profile_tags: regular.full_name.includes("Dino")
+    ? { speed: "strength", passing: "strength", stamina: "weakness" }
+    : regular.full_name.includes("Agustin")
+    ? { finishing: "strength", shot_power: "strength", defensive_awareness: "weakness" }
+    : {}
+}));
+
+const demoSignupsByGame = {
+  "demo-mon-open": [
+    ["Dino", "Vučić", "Croatia"], ["Flo", "Psaïla", "France"], ["Igor", "Sadovoi", "Croatia"], ["Michael", "Freer", "United Kingdom"],
+    ["Agustin", "Fontanilla", "Argentina"], ["Oscar", "Narvaez", "Australia"], ["Vito", "Pauletić", "Croatia"], ["Andrii", "Frolov", "Ukraine"]
+  ],
+  "demo-wed-full": [
+    ["Dino", "Vučić", "Croatia"], ["Flo", "Psaïla", "France"], ["Igor", "Sadovoi", "Croatia"], ["Michael", "Freer", "United Kingdom"],
+    ["Agustin", "Fontanilla", "Argentina"], ["Oscar", "Narvaez", "Australia"], ["Vito", "Pauletić", "Croatia"], ["Andrii", "Frolov", "Ukraine"],
+    ["Marco", "Heras", ""], ["Vojo", "Mladinić", "Croatia"], ["Maximilian", "Alexander Montgomery", "United Kingdom"], ["Lucho", "Cvitanic", "Chile"],
+    ["Ivan", "Guest", ""], ["Toni", "Waiting", ""]
+  ],
+  "demo-fri-closed": []
+};
+
+const demoResults = [
+  {
+    id: "demo-result-1",
+    game_date: "2026-09-23",
+    team_a_score: 8,
+    team_b_score: 9,
+    team_a_players: ["Jere Š.", "Lovre Rogulj", "Dino Vučić", "Oscar Narvaez", "Igor Sadovoi"],
+    team_b_players: ["Marcos Bravo", "Flo Psaïla", "Andrii Frolov", "Roman R.", "Vito Pauletić"],
+    player_stats: {
+      "Jere Š.": { goals: 1, assists: 4 },
+      "Lovre Rogulj": { goals: 3, assists: 1 },
+      "Dino Vučić": { goals: 2, assists: 1 },
+      "Oscar Narvaez": { goals: 1, assists: 2 },
+      "Igor Sadovoi": { goals: 1, assists: 0 },
+      "Marcos Bravo": { goals: 5, assists: 0 },
+      "Flo Psaïla": { goals: 2, assists: 1 },
+      "Andrii Frolov": { goals: 1, assists: 2 },
+      "Roman R.": { goals: 0, assists: 2 },
+      "Vito Pauletić": { goals: 1, assists: 0 }
+    },
+    game_flow: "1-0, 2-0, 2-1, 3-1, 3-2, 4-2, 5-2, 5-3, 6-3, 6-4, 7-4, 8-4, 8-5, 8-6, 8-7, 8-8, 8-9",
+    team_a_photo_url: "preview/assets/aesfc-current-photo.jpg",
+    team_b_photo_url: "preview/assets/aesfc-current-photo.jpg",
+    is_active: true,
+    created_at: "2026-09-23T21:10:00.000Z"
+  },
+  {
+    id: "demo-result-2",
+    game_date: "2026-09-21",
+    team_a_score: 6,
+    team_b_score: 6,
+    team_a_players: ["Luka Z.", "Dino Vučić", "Agustin Fontanilla", "Oscar Narvaez", "Michael Freer", "Emanuel Andjelic"],
+    team_b_players: ["Miro Bandalo", "Vito Pauletić", "Flo Psaïla", "Marco Heras", "Andrii Frolov", "Lovre Rogulj"],
+    player_stats: {
+      "Luka Z.": { goals: 3, assists: 1 },
+      "Dino Vučić": { goals: 1, assists: 2 },
+      "Agustin Fontanilla": { goals: 1, assists: 1 },
+      "Oscar Narvaez": { goals: 0, assists: 2 },
+      "Michael Freer": { goals: 1, assists: 0 },
+      "Miro Bandalo": { goals: 2, assists: 2 },
+      "Vito Pauletić": { goals: 3, assists: 0 },
+      "Flo Psaïla": { goals: 1, assists: 1 },
+      "Marco Heras": { goals: 0, assists: 1 }
+    },
+    game_flow: "1-0, 1-1, 2-1, 2-2, 3-2, 3-3, 4-3, 4-4, 5-4, 5-5, 6-5, 6-6",
+    is_active: true,
+    created_at: "2026-09-21T21:05:00.000Z"
+  }
+];
 
 const state = {
   photos: fallbackPhotos,
@@ -149,6 +283,7 @@ const state = {
     unsavedChanges: false,
     started: false
   },
+  photoPaused: false,
   settings: {
     rules_title: DEFAULT_RULES_TITLE,
     rules_text: DEFAULT_RULES_TEXT
@@ -163,6 +298,7 @@ const fmtTime = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short
 const fmtShortGame = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "Europe/Zagreb" });
 const fmtShortResult = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Europe/Zagreb" });
 const fmtOpenDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zagreb" });
+const fmtFixtureOpen = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Zagreb" });
 
 function setMessage(node, message, isError = false) {
   node.textContent = message || "";
@@ -182,6 +318,7 @@ function usesSupabaseAdminAuth() {
 }
 
 function hasAdminAccess() {
+  if (DEMO_MODE) return true;
   return usesSupabaseAdminAuth()
     ? state.adminVerified
     : state.adminPassword === ADMIN_PASSWORD;
@@ -355,6 +492,61 @@ function rankSignups(signups) {
     }));
 }
 
+function demoSignupRows(gameId) {
+  return rankSignups((demoSignupsByGame[gameId] || []).map(([first, last, nationality], index) => ({
+    id: `${gameId}-signup-${index + 1}`,
+    game_id: gameId,
+    first_name: first,
+    last_name: last,
+    nationality,
+    created_at: new Date(Date.UTC(2026, 9, 3, 7, index)).toISOString(),
+    cancel_token: `demo-token-${index + 1}`
+  })));
+}
+
+function demoSignupCounts() {
+  return Object.fromEntries(demoGames.map((game) => [game.id, demoSignupRows(game.id).length]));
+}
+
+function activateDemoMode() {
+  document.body.classList.add("demo-mode");
+  el("demoBanner")?.classList.remove("hidden");
+  state.games = demoGames.map((game) => ({ ...game, is_open: game.id !== "demo-fri-closed" && isGameAvailable(game) }));
+  state.publicGames = state.games.filter(isGameAvailable).slice(0, 3);
+  state.game = state.publicGames[0];
+  state.adminGame = state.game;
+  state.signups = demoSignupRows(state.game.id);
+  state.cancelledSignups = [];
+  state.adminSignups = state.signups;
+  state.adminCancelledSignups = [{
+    id: "demo-cancel-1",
+    first_name: "Sample",
+    last_name: "Cancellation",
+    comments: "Demo cancelled signup",
+    cancelled_at: "2026-10-03T09:00:00.000Z"
+  }];
+  state.photos = demoPhotos;
+  state.regulars = demoRegulars;
+  state.playerProfiles = demoPlayerProfiles;
+  state.results = demoResults;
+  state.settings = {
+    rules_title: "Signup rules",
+    rules_text: DEFAULT_RULES_TEXT
+  };
+  state.signupCountsByGame = demoSignupCounts();
+}
+
+function fixtureStatus(game) {
+  if (!isGameAvailable(game)) return "Cancelled";
+  const count = state.signupCountsByGame?.[game.id] ?? demoSignupRows(game.id).length;
+  if (!isGameOpen(game)) {
+    const opens = new Date(game.signup_opens_at || signupOpenForGame(game.game_date));
+    return `Signup opens ${fmtFixtureOpen.format(opens).replace(",", "")}`;
+  }
+  if (count >= 12) return "Full · Join waiting list";
+  return `${12 - count} spot${12 - count === 1 ? "" : "s"} left`;
+}
+
 function splitFullName(fullName) {
   const clean = String(fullName || "").trim().replace(/\s+/g, " ");
   const parts = clean.split(" ");
@@ -378,7 +570,12 @@ function normalizeName(value) {
 }
 
 function nationalityFlag(nationality = "") {
-  return NATIONALITY_FLAGS[String(nationality || "").trim().toLocaleLowerCase()] || "";
+  const flag = NATIONALITY_FLAGS[String(nationality || "").trim().toLocaleLowerCase()];
+  return flag ? `public/flags/${flag.code}.svg` : "";
+}
+
+function nationalityFlagLabel(nationality = "") {
+  return NATIONALITY_FLAGS[String(nationality || "").trim().toLocaleLowerCase()]?.label || String(nationality || "").trim();
 }
 
 function regularForName(fullName = "") {
@@ -762,7 +959,9 @@ function renderResults() {
       <option value="all" ${state.resultsMonth === "all" ? "selected" : ""}>All-Time</option>
     `;
   }
-  el("recentResults").innerHTML = selectedResults.map(renderResultCard).join("") || `<p class="empty-note">No match results for ${escapeHtml(monthLabel(state.resultsMonth))} yet.</p>`;
+  el("recentResults").innerHTML = selectedResults.length
+    ? `<p class="stat-key">G = goals · A = assists</p>${selectedResults.map(renderResultCard).join("")}`
+    : `<p class="empty-note">No match results for ${escapeHtml(monthLabel(state.resultsMonth))} yet.</p>`;
   renderPlayerStats(results);
 }
 
@@ -1310,12 +1509,16 @@ function renderPlayerStats(results) {
       <thead><tr><th>#</th><th></th><th>Player</th><th>Pts</th><th>Form</th><th>Win %</th><th>Apps</th><th>W</th><th>D</th><th>G</th><th>A</th><th>G+A</th><th>G/game</th><th>A/game</th></tr></thead>
       <tbody>
         ${rows.map((row, index) => {
-          const flag = nationalityFlag(nationalityForName(row.name));
+          const nationality = nationalityForName(row.name);
+          const flag = nationalityFlag(nationality);
           return `
           <tr class="${!isAllTime && index < 3 ? `podium-row podium-${index + 1}` : ""}">
             <td class="rank-cell">${!isAllTime && index < 3 ? ["🥇", "🥈", "🥉"][index] : index + 1}</td>
             <td class="move-cell">${renderRankMovement(movement.get(row.name))}</td>
-            <td class="player-cell ${flag ? "has-flag" : ""}" style="${flag ? `--player-flag: '${flag}'` : ""}"><strong>${escapeHtml(row.name)}</strong></td>
+            <td class="player-cell ${flag ? "has-flag" : ""}">
+              <strong>${escapeHtml(row.name)}</strong>
+              ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
+            </td>
             <td><strong>${row.points}</strong></td>
             <td>${renderFormPills(row.form)}</td>
             <td>${formatPercent(row.winPct)}</td>
@@ -1461,11 +1664,11 @@ function renderResultPlayers(players = [], result = null, abbreviate = false) {
 function renderResultStatIcons(stats = {}) {
   const goals = Math.max(0, Number(stats.goals || 0));
   const assists = Math.max(0, Number(stats.assists || 0));
-  const icons = [
-    goals ? `<span class="goal-icons" aria-label="${goals} goals">${"⚽".repeat(goals)}</span>` : "",
-    assists ? `<span class="assist-icons" aria-label="${assists} assists">${Array.from({ length: assists }, () => "<b>🅰️</b>").join("")}</span>` : ""
-  ].filter(Boolean).join("");
-  return icons ? `<span class="result-stat-icons">${icons}</span>` : "";
+  const marks = [
+    goals ? `${goals}G` : "",
+    assists ? `${assists}A` : ""
+  ].filter(Boolean).join(" · ");
+  return marks ? `<span class="result-stat-icons">${escapeHtml(marks)}</span>` : "";
 }
 
 function sortPlayersByContribution(players = [], result = null) {
@@ -1537,6 +1740,7 @@ function renderRules() {
 function renderPhotos() {
   const photos = state.photos.length ? state.photos : fallbackPhotos;
   state.photoIndex = Math.min(state.photoIndex, photos.length - 1);
+  document.querySelector(".photo-story")?.classList.toggle("has-multiple", photos.length > 1);
   el("photoGrid").innerHTML = photos.map((photo, index) => `
     <button class="photo-card" type="button" data-photo="${index}" aria-label="Open ${escapeHtml(photo.title || "football photo")}">
       <img src="${escapeHtml(photo.url)}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
@@ -1544,9 +1748,10 @@ function renderPhotos() {
   `).join("");
   showPhoto(state.photoIndex);
   clearInterval(window.aesSlideTimer);
+  if (state.photoPaused || photos.length < 2 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   window.aesSlideTimer = setInterval(() => {
     const latest = state.photos.length ? state.photos : fallbackPhotos;
-    if (latest.length > 1) showPhoto(state.photoIndex + 1);
+    if (!state.photoPaused && latest.length > 1) showPhoto(state.photoIndex + 1);
   }, 4200);
 }
 
@@ -1563,9 +1768,26 @@ function showPhoto(index) {
   if (el("photoCounter")) el("photoCounter").textContent = `Photo ${state.photoIndex + 1} of ${photos.length}`;
 }
 
+function toggleHeroPhotoPause() {
+  state.photoPaused = !state.photoPaused;
+  const button = el("heroPhotoPause");
+  if (button) {
+    button.textContent = state.photoPaused ? "Play" : "Pause";
+    button.setAttribute("aria-pressed", state.photoPaused ? "true" : "false");
+  }
+  renderPhotos();
+}
+
 function renderLists() {
   const playing = state.signups.filter((s) => s.status === "Playing");
   const subs = state.signups.filter((s) => s.status === "Sub");
+  if (el("liveListTitle")) {
+    const selectedDate = state.game?.game_date ? new Date(`${state.game.game_date}T12:00:00`) : null;
+    const day = selectedDate
+      ? selectedDate.toLocaleDateString("en-US", { weekday: "long", timeZone: "Europe/Zagreb" })
+      : "Selected game";
+    el("liveListTitle").textContent = `${day}’s players`;
+  }
   el("playingCount").textContent = playing.length;
   el("subsCount").textContent = subs.length;
   el("playingList").innerHTML = playing.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No players yet</li>";
@@ -1592,14 +1814,36 @@ function renderGameSelector() {
     listSelect.innerHTML = options;
     if (state.game?.id) listSelect.value = state.game.id;
   }
+  renderFixtureCards();
+}
+
+function renderFixtureCards() {
+  const node = el("fixtureCards");
+  if (!node) return;
+  const games = state.publicGames?.length ? state.publicGames : (state.games || []).filter(isGameAvailable).slice(0, 3);
+  node.innerHTML = games.map((game) => {
+    const start = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
+    const status = fixtureStatus(game);
+    const active = String(game.id) === String(state.game?.id);
+    const statusClass = status.includes("spot") ? "open" : status.includes("Full") ? "full" : "";
+    return `
+      <button class="fixture ${active ? "active" : ""}" type="button" data-fixture-game="${escapeHtml(game.id)}" aria-pressed="${active ? "true" : "false"}">
+        <span class="fixture-date">${escapeHtml(fmtShortGame.format(start))}</span>
+        <span class="fixture-main">${escapeHtml(formatClock(game.start_time).replace(":00 ", ""))} · ${escapeHtml(game.location_name || "AES FC")}</span>
+        <span class="fixture-status ${statusClass}">${escapeHtml(status)}</span>
+      </button>
+    `;
+  }).join("") || "<p class=\"empty-note\">No upcoming fixtures found.</p>";
 }
 
 function renderPublicSignup(signup) {
   const signedBy = signup.signed_up_by || String(signup.comments || "").match(/^Signed up by (.+)\.$/i)?.[1];
-  const flag = nationalityFlag(signupNationality(signup));
+  const nationality = signupNationality(signup);
+  const flag = nationalityFlag(nationality);
   return `
-    <li class="${flag ? "has-flag" : ""}" style="${flag ? `--player-flag: '${flag}'` : ""}">
+    <li class="${flag ? "has-flag" : ""}">
       <strong>${escapeHtml(signup.first_name)} ${escapeHtml(signup.last_name || "")}</strong>
+      ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
       <span class="meta">
         <span>${fmtTime.format(new Date(signup.created_at))}</span>
         ${signedBy ? `<span class="signup-note">signed up by ${escapeHtml(signedBy)}</span>` : ""}
@@ -1769,9 +2013,25 @@ function setupRealtime() {
 }
 
 async function loadPublicState() {
+  if (DEMO_MODE) {
+    if (!state.game) activateDemoMode();
+    state.signups = demoSignupRows(state.game.id);
+    state.cancelledSignups = [];
+    renderSheetStatus();
+    renderGameSelector();
+    renderFixtureCards();
+    renderPhotos();
+    renderLists();
+    renderResults();
+    renderRules();
+    renderPlayerSelectors();
+    renderCancelSelector();
+    return;
+  }
   if (!configured) {
     state.photos = fallbackPhotos;
     renderSheetStatus();
+    renderFixtureCards();
     renderPhotos();
     renderLists();
     renderResults();
@@ -1790,6 +2050,7 @@ async function loadPublicState() {
   state.results = await loadResults();
   renderSheetStatus();
   renderGameSelector();
+  renderFixtureCards();
   renderPhotos();
   renderLists();
   renderResults();
@@ -1803,6 +2064,17 @@ async function selectPublicGame(gameId) {
   const selected = (state.publicGames?.length ? state.publicGames : state.games || []).find((game) => game.id === gameId);
   if (!selected) return;
   state.game = { ...selected, is_open: isGameOpen(selected) };
+  if (DEMO_MODE) {
+    state.signups = demoSignupRows(state.game.id);
+    state.cancelledSignups = [];
+    renderSheetStatus();
+    renderGameSelector();
+    renderFixtureCards();
+    renderLists();
+    renderPlayerSelectors();
+    renderCancelSelector();
+    return;
+  }
   await ensureOrganizerSignups(state.game);
   state.signups = await loadSignups(state.game.id);
   state.cancelledSignups = await loadCancelledSignups(state.game.id);
@@ -1942,6 +2214,10 @@ async function submitSignup(event) {
     setMessage(message, "Wrong signup password.", true);
     return;
   }
+  if (DEMO_MODE) {
+    setMessage(message, "Demo mode: signup form checked, but no production signup was saved.");
+    return;
+  }
   try {
     const game = state.game || await getCurrentGame();
     const playerCount = Number(formData.get("player_count") || 1);
@@ -2025,6 +2301,10 @@ async function cancelSignup(event) {
   const signup = state.signups.find((item) => item.id === signupId);
   if (!signup) {
     setMessage(message, "Please choose your name from the current signup list.", true);
+    return;
+  }
+  if (DEMO_MODE) {
+    setMessage(message, "Demo mode: cancellation checked, but no production signup was changed.");
     return;
   }
   if (!doubleConfirm(`Cancel signup for ${signupFullName(signup)}?`)) {
@@ -2140,6 +2420,12 @@ function openLightbox(index) {
 
 async function adminLogin(event) {
   event.preventDefault();
+  if (DEMO_MODE) {
+    await loadAdmin();
+    el("adminTools").classList.remove("hidden");
+    setMessage(el("adminMessage"), "Demo admin loaded. Sample data only; no production writes.");
+    return;
+  }
   requireDb();
   const formData = new FormData(event.currentTarget);
   try {
@@ -2189,6 +2475,32 @@ function renderAdminLoginMode() {
 
 async function loadAdmin() {
   assertAdmin();
+  if (DEMO_MODE) {
+    if (!state.game) activateDemoMode();
+    state.adminGame = state.adminGame || state.game;
+    state.adminSignups = demoSignupRows(state.adminGame.id);
+    state.adminCancelledSignups = [{
+      id: "demo-cancel-1",
+      first_name: "Sample",
+      last_name: "Cancellation",
+      comments: "Demo cancelled signup",
+      cancelled_at: "2026-10-03T09:00:00.000Z"
+    }];
+    state.signupCountsByGame = demoSignupCounts();
+    renderAdminGame(state.adminGame);
+    renderAdminSignups(state.adminSignups);
+    renderAdminCancellations(state.adminCancelledSignups);
+    renderAdminPhotos(state.photos);
+    renderAdminSettings();
+    renderAdminRegulars();
+    renderAdminProfiles();
+    renderResultForm();
+    renderAdminResults();
+    renderAdminPlayerMonthTool();
+    renderAdminMonthlySummary();
+    renderPlayerSelectors();
+    return;
+  }
   if (!state.adminGame) state.adminGame = state.game || await getCurrentGame();
   await loadUpcomingGames();
   state.regulars = await loadRegulars();
@@ -2717,6 +3029,14 @@ async function saveRegularsBatch() {
   const validation = validateRegularDrafts(drafts);
   if (validation.length) throw new Error(validation.join(" "));
   const changed = drafts.filter((draft) => !valuesEqual(draft.payload, draft.baseline));
+  if (DEMO_MODE) {
+    state.regularsDirty = false;
+    renderAdminRegulars();
+    setMessage(el("adminMessage"), changed.length
+      ? `Demo mode: ${changed.length} player row${changed.length === 1 ? "" : "s"} validated. No production records were saved.`
+      : "Demo mode: no player changes to save.");
+    return;
+  }
   if (!changed.length) {
     state.regularsDirty = false;
     renderAdminRegulars();
@@ -2877,6 +3197,14 @@ async function saveScheduleBatch() {
   const validation = validateScheduleDrafts(drafts);
   if (validation.length) throw new Error(validation.join(" "));
   const changed = drafts.filter((draft) => !valuesEqual(draft.payload, draft.baseline));
+  if (DEMO_MODE) {
+    state.scheduleDirty = false;
+    renderAdminGamesList();
+    setMessage(el("adminMessage"), changed.length
+      ? `Demo mode: ${changed.length} schedule row${changed.length === 1 ? "" : "s"} validated. No production records were saved.`
+      : "Demo mode: no schedule changes to save.");
+    return;
+  }
   if (!changed.length) {
     state.scheduleDirty = false;
     renderAdminGamesList();
@@ -3244,6 +3572,21 @@ async function selectAdminGame(gameId) {
   const game = (state.games || []).find((item) => String(item.id) === String(gameId));
   if (!game) throw new Error("Could not find that game.");
   state.adminGame = { ...game, is_open: isGameOpen(game) };
+  if (DEMO_MODE) {
+    state.adminSignups = demoSignupRows(state.adminGame.id);
+    state.adminCancelledSignups = state.adminGame.game_status === "skipped" ? [{
+      id: "demo-cancel-skipped",
+      first_name: "Cancelled",
+      last_name: "Fixture",
+      comments: "This demo fixture is inactive.",
+      cancelled_at: "2026-10-10T07:00:00.000Z"
+    }] : [];
+    renderAdminGame(state.adminGame);
+    renderAdminSignups(state.adminSignups);
+    renderAdminCancellations(state.adminCancelledSignups);
+    setMessage(el("adminMessage"), "Now editing selected demo game.");
+    return;
+  }
   state.adminSignups = await loadSignups(state.adminGame.id);
   state.adminCancelledSignups = await loadCancelledSignups(state.adminGame.id);
   renderAdminGame(state.adminGame);
@@ -4503,6 +4846,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("signupForm").addEventListener("submit", submitSignup);
   el("gameSelect").addEventListener("change", (event) => selectPublicGame(event.currentTarget.value));
   el("listGameSelect").addEventListener("change", (event) => selectPublicGame(event.currentTarget.value));
+  el("fixtureCards")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-fixture-game]");
+    if (button) selectPublicGame(button.dataset.fixtureGame);
+  });
   el("cancelSignupForm").addEventListener("submit", cancelSignup);
   el("photoGrid").addEventListener("click", (event) => {
     const card = event.target.closest("[data-photo]");
@@ -4510,6 +4857,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   el("photoPrev").addEventListener("click", () => showPhoto(state.photoIndex - 1));
   el("photoNext").addEventListener("click", () => showPhoto(state.photoIndex + 1));
+  el("heroPhotoPrev")?.addEventListener("click", () => showPhoto(state.photoIndex - 1));
+  el("heroPhotoNext")?.addEventListener("click", () => showPhoto(state.photoIndex + 1));
+  el("heroPhotoPause")?.addEventListener("click", toggleHeroPhotoPause);
   el("resultsMonthSelect").addEventListener("change", (event) => {
     state.resultsMonth = event.target.value;
     renderResults();

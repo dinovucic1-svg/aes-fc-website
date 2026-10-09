@@ -9,13 +9,14 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
-    <header class="topbar">
+    <div id="demoBanner" class="demo-banner hidden">Local demo mode · sample data only · no production writes</div>
+    <header class="topbar site-header">
       <div class="checker-strip" aria-hidden="true"></div>
       <a class="brand" href="#signupForm" aria-label="AES FC signup form">
         <span class="crest"><img src="public/aes-fc-logo.png" alt="AES FC logo"></span>
         <span>
           <strong>AES FC</strong>
-          <small>Active Expats (&amp; Locals) in Split Football Club</small>
+          <small>Private signup</small>
         </span>
       </a>
       <nav aria-label="Main navigation">
@@ -27,13 +28,10 @@
     </header>
 
     <main>
-      <section class="hero" id="signup">
-        <div class="hero-media">
-          <img id="heroSlide" src="public/photos/aes-placeholder-1.svg" alt="AES FC football photo">
-        </div>
-        <div class="hero-content">
-          <h1>AES FC Private Signup</h1>
-          <p class="hero-subtitle">Active Expats (&amp; Locals) in Split Football Club</p>
+      <section class="hero intro" id="signup">
+        <div class="intro-copy">
+          <h1>Football in Split.</h1>
+          <p class="hero-subtitle">Internationals &amp; locals. Since 2015.</p>
           <div class="match-strip">
             <div>
               <span>Next Game</span>
@@ -49,6 +47,18 @@
             </div>
           </div>
         </div>
+        <section class="photo-story" aria-label="AES FC photo slideshow">
+          <div class="slides">
+            <figure class="slide active">
+              <img id="heroSlide" src="public/photos/aes-placeholder-1.svg" alt="AES FC football photo">
+            </figure>
+          </div>
+          <div class="slideshow-controls" aria-label="Photo controls">
+            <button id="heroPhotoPrev" type="button" aria-label="Previous photo">‹</button>
+            <button id="heroPhotoPause" type="button" aria-pressed="false">Pause</button>
+            <button id="heroPhotoNext" type="button" aria-label="Next photo">›</button>
+          </div>
+        </section>
       </section>
 
       <section class="notice-band">
@@ -56,6 +66,15 @@
           <h2 id="rulesTitle">Before You Sign Up</h2>
           <div id="rulesText"></div>
         </div>
+      </section>
+
+      <section class="fixture-section" aria-label="Upcoming games">
+        <div class="section-head">
+          <p class="eyebrow">Choose game</p>
+          <h2>Upcoming fixtures</h2>
+          <p class="fixture-note">Signup for next week opens every Saturday at 09:00, Split time.</p>
+        </div>
+        <div id="fixtureCards" class="fixture-list"></div>
       </section>
 
       <section class="signup-layout">
@@ -108,7 +127,7 @@
 
         <aside class="panel lists-panel">
           <div class="section-title">
-            <h2>This week’s players</h2>
+            <h2 id="liveListTitle">Selected game players</h2>
             <p id="openSignupCount" class="compact-game-summary">Loading...</p>
             <p id="listGameSummary" class="compact-game-summary hidden"></p>
           </div>
