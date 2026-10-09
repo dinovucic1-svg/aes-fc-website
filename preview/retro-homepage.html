@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AES FC Stage 1 Preview</title>
+    <link rel="stylesheet" href="retro-homepage.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#signup-preview" aria-label="AES FC signup preview">
+        <img src="../public/aes-fc-logo.png" alt="AES FC crest">
+        <span>
+          <strong>AES FC</strong>
+          <small>Private signup</small>
+        </span>
+      </a>
+      <nav aria-label="Preview navigation">
+        <a href="#signup-preview">Signup</a>
+        <a href="#results-preview">Results</a>
+        <a href="#rankings-preview">Rankings</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-art" aria-hidden="true"></div>
+        <div class="hero-copy">
+          <p class="eyebrow">Saturday 9 AM signups</p>
+          <h1>Football in Split.</h1>
+          <p>Internationals &amp; locals. Since 2015.</p>
+        </div>
+      </section>
+
+      <section class="fixture-section" aria-label="Sample upcoming games">
+        <div class="section-head">
+          <p class="eyebrow">Choose game</p>
+          <h2>Upcoming fixtures</h2>
+        </div>
+        <div class="fixture-list">
+          <button class="fixture active" type="button" aria-pressed="true">
+            <span class="fixture-date">Mon 12 Oct</span>
+            <span class="fixture-main">8 PM · Bili’s Pitch</span>
+            <span class="fixture-status open">Open · 8/12</span>
+          </button>
+          <button class="fixture" type="button">
+            <span class="fixture-date">Wed 14 Oct</span>
+            <span class="fixture-main">9 PM · Gusar</span>
+            <span class="fixture-status">Opens Sat 9 AM</span>
+          </button>
+          <button class="fixture" type="button">
+            <span class="fixture-date">Fri 16 Oct</span>
+            <span class="fixture-main">8 PM · Gusar</span>
+            <span class="fixture-status">Opens Sat 9 AM</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="signup-preview" class="signup-area">
+        <aside class="availability" aria-label="Selected game availability">
+          <p class="eyebrow">Selected match</p>
+          <h2>Mon 12 Oct · 8 PM</h2>
+          <p>Bili’s Pitch · 8 playing, 4 spots open</p>
+        </aside>
+
+        <form class="signup-panel">
+          <div class="section-head">
+            <p class="eyebrow">Join</p>
+            <h2>Sign up</h2>
+          </div>
+          <div class="form-grid">
+            <label>Password<input type="password" value="2015" aria-label="Sample password"></label>
+            <label>Name
+              <select aria-label="Sample player select">
+                <option>Choose a player</option>
+                <option>Dino Vučić</option>
+                <option>Flo Psaïla</option>
+                <option>Igor Sadovoi</option>
+              </select>
+            </label>
+          </div>
+          <label class="check-row"><input type="checkbox" checked> I’m signing myself up</label>
+          <details class="quiet-drawer">
+            <summary>Add guest or more players</summary>
+            <label>Players<input type="number" value="1" min="1"></label>
+          </details>
+          <button type="button">Sign up</button>
+        </form>
+
+        <aside class="list-panel">
+          <div class="list-title">
+            <div>
+              <p class="eyebrow">Live list</p>
+              <h2>This week’s players</h2>
+            </div>
+            <strong>8/12</strong>
+          </div>
+          <ol>
+            <li><span>Dino Vučić</span><em>CRO</em></li>
+            <li><span>Flo Psaïla</span><em>FRA</em></li>
+            <li><span>Igor Sadovoi</span><em>CRO</em></li>
+            <li><span>Michael Freer</span><em>UK</em></li>
+            <li><span>Agustin Fontanilla</span><em>ARG</em></li>
+            <li><span>Oscar Narvaez</span><em>AUS</em></li>
+            <li><span>Vito Pauletić</span><em>CRO</em></li>
+            <li><span>Andrii Frolov</span><em>UKR</em></li>
+          </ol>
+          <p class="subs">Subs · No subs yet</p>
+        </aside>
+      </section>
+
+      <section id="results-preview" class="results-section">
+        <div class="result-card">
+          <p class="eyebrow">Latest result</p>
+          <h2>Wed 23 Sep</h2>
+          <div class="score">8–9</div>
+          <div class="teams">
+            <ul>
+              <li><strong>Jere S.</strong><span>⚽ 🅰️ 🅰️ 🅰️ 🅰️</span></li>
+              <li><strong>Lovre R.</strong><span>⚽ ⚽ ⚽ 🅰️</span></li>
+              <li><strong>Dino V.</strong><span>⚽ ⚽ 🅰️</span></li>
+              <li><strong>Igor S.</strong><span>⚽</span></li>
+            </ul>
+            <ul>
+              <li><strong>Marcos B.</strong><span>⚽ ⚽ ⚽ ⚽ ⚽</span></li>
+              <li><strong>Flo P.</strong><span>⚽ ⚽ 🅰️</span></li>
+              <li><strong>Andrii F.</strong><span>⚽ 🅰️ 🅰️</span></li>
+              <li><strong>Roman R.</strong><span>🅰️ 🅰️</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <div id="rankings-preview" class="rankings-card">
+          <div class="section-head">
+            <p class="eyebrow">September table</p>
+            <h2>Rankings</h2>
+          </div>
+          <ol class="ranking-list">
+            <li><span>1</span><strong>Flo Psaïla</strong><em>28 pts</em></li>
+            <li><span>2</span><strong>Marcos B.</strong><em>25 pts</em></li>
+            <li><span>3</span><strong>Jere S.</strong><em>22 pts</em></li>
+          </ol>
+          <button type="button" class="secondary-action">View rankings</button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
