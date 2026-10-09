@@ -143,69 +143,51 @@ drop policy if exists aesfc_player_profiles_public_access on public.aesfc_player
 drop policy if exists aesfc_results_public_access on public.aesfc_results;
 drop policy if exists aesfc_tracker_drafts_public_access on public.aesfc_tracker_drafts;
 drop policy if exists aesfc_fixture_exceptions_public_access on public.aesfc_fixture_exceptions;
+drop policy if exists aesfc_games_public_read on public.aesfc_games;
+drop policy if exists aesfc_signups_public_read on public.aesfc_signups;
+drop policy if exists aesfc_signups_public_insert on public.aesfc_signups;
+drop policy if exists aesfc_signups_public_cancel on public.aesfc_signups;
+drop policy if exists aesfc_photos_public_read on public.aesfc_photos;
+drop policy if exists aesfc_settings_public_read on public.aesfc_settings;
+drop policy if exists aesfc_regulars_public_read on public.aesfc_regulars;
+drop policy if exists aesfc_player_profiles_public_read on public.aesfc_player_profiles;
+drop policy if exists aesfc_results_public_read on public.aesfc_results;
 
-create policy aesfc_games_public_access
+create policy aesfc_games_public_read
 on public.aesfc_games
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
-create policy aesfc_signups_public_access
-on public.aesfc_signups
-for all
-to anon
-using (true)
-with check (true);
-
-create policy aesfc_photos_public_access
+create policy aesfc_photos_public_read
 on public.aesfc_photos
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
-create policy aesfc_settings_public_access
+create policy aesfc_settings_public_read
 on public.aesfc_settings
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
-create policy aesfc_regulars_public_access
+create policy aesfc_regulars_public_read
 on public.aesfc_regulars
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
-create policy aesfc_player_profiles_public_access
+create policy aesfc_player_profiles_public_read
 on public.aesfc_player_profiles
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
-create policy aesfc_results_public_access
+create policy aesfc_results_public_read
 on public.aesfc_results
-for all
-to anon
-using (true)
-with check (true);
-
-create policy aesfc_tracker_drafts_public_access
-on public.aesfc_tracker_drafts
-for all
-to anon
-using (true)
-with check (true);
-
-create policy aesfc_fixture_exceptions_public_access
-on public.aesfc_fixture_exceptions
-for all
-to anon
-using (true)
-with check (true);
+for select
+to anon, authenticated
+using (true);
 
 insert into public.aesfc_settings (id, rules_title, rules_text, youtube_channel_url, youtube_video_ids)
 values (

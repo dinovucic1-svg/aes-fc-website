@@ -19,13 +19,6 @@ alter table public.aesfc_fixture_exceptions enable row level security;
 
 drop policy if exists aesfc_fixture_exceptions_public_access on public.aesfc_fixture_exceptions;
 
-create policy aesfc_fixture_exceptions_public_access
-on public.aesfc_fixture_exceptions
-for all
-to anon
-using (true)
-with check (true);
-
 update public.aesfc_regulars
 set guaranteed_games = array['monday', 'wednesday']
 where guaranteed_signup = true
@@ -189,6 +182,8 @@ begin
   ) selected;
 end;
 $$;
+
+grant execute on function public.aesfc_ensure_weekly_games_and_guarantees() to anon, authenticated;
 
 select public.aesfc_ensure_weekly_games_and_guarantees();
 

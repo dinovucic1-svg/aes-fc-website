@@ -668,6 +668,14 @@ async function loadPlayerProfiles() {
 }
 
 async function loadSignups(gameId) {
+  if (!hasAdminAccess()) {
+    const { data, error } = await db.rpc("aesfc_public_signups", {
+      p_game_id: gameId,
+      p_include_cancelled: false
+    });
+    if (error) throw error;
+    return rankSignups(data || []);
+  }
   const { data, error } = await db
     .from("aesfc_signups")
     .select("*")
@@ -679,6 +687,14 @@ async function loadSignups(gameId) {
 }
 
 async function loadCancelledSignups(gameId) {
+  if (!hasAdminAccess()) {
+    const { data, error } = await db.rpc("aesfc_public_signups", {
+      p_game_id: gameId,
+      p_include_cancelled: true
+    });
+    if (error) throw error;
+    return (data || []).filter((signup) => signup.cancelled_at);
+  }
   const { data, error } = await db
     .from("aesfc_signups")
     .select("*")
@@ -693,63 +709,17 @@ async function loadSignupCountsForGames(games = state.games) {
   const ids = (games || []).map((game) => game.id).filter(Boolean);
   if (!ids.length) return {};
   const { data, error } = await db
-    .from("aesfc_signups")
-    .select("game_id,cancelled_at")
-    .in("game_id", ids);
+    .rpc("aesfc_public_signup_counts", { p_game_ids: ids });
   if (error) throw error;
   return (data || []).reduce((counts, signup) => {
-    if (!signup.cancelled_at) counts[signup.game_id] = (counts[signup.game_id] || 0) + 1;
+    counts[signup.game_id] = Number(signup.signup_count || 0);
     return counts;
   }, {});
 }
 
 async function ensureOrganizerSignups(game) {
   if (!game?.id) return;
-  const opens = new Date(game.signup_opens_at || signupOpenForGame(game.game_date));
-  const autoSignupTime = opens;
-  const closes = new Date(zagrebDateTime(game.game_date, String(game.end_time || "22:00").slice(0, 5)));
-  const now = new Date();
-  if (now < autoSignupTime || now >= closes) return;
-
-  const { data: guaranteed, error: regularError } = await db
-    .from("aesfc_regulars")
-    .select("full_name,nationality,guaranteed_signup,guaranteed_games")
-    .eq("is_active", true)
-    .order("full_name", { ascending: true });
-  if (regularError) throw regularError;
-  const guaranteedPlayers = (guaranteed || [])
-    .filter((regular) => regular.full_name && guaranteedAppliesToGame(regular, game));
-  if (!guaranteedPlayers.length) return;
-
-  const { data: existing, error: lookupError } = await db
-    .from("aesfc_signups")
-    .select("first_name,last_name")
-    .eq("game_id", game.id);
-  if (lookupError) throw lookupError;
-
-  const existingNames = new Set((existing || []).map((signup) => normalizeName(signupFullName(signup))));
-  const rows = guaranteedPlayers
-    .filter((regular) => !existingNames.has(normalizeName(regular.full_name)))
-    .map((regular, index) => {
-      const player = splitFullName(regular.full_name);
-      return {
-        game_id: game.id,
-        signup_group: crypto.randomUUID(),
-        first_name: player.firstName,
-        last_name: player.lastName,
-        nationality: regular.nationality || "",
-        email: "not-collected@aesfc.local",
-        phone: "not collected",
-        comments: index < 12 ? "Guaranteed signup" : "Guaranteed signup - capacity conflict, listed as sub",
-        signed_up_by: null,
-        played_before: "no",
-        cancel_token: crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", ""),
-        created_at: new Date(autoSignupTime.getTime() + index).toISOString()
-      };
-    });
-
-  if (!rows.length) return;
-  const { error } = await db.from("aesfc_signups").insert(rows);
+  const { error } = await db.rpc("aesfc_ensure_weekly_games_and_guarantees");
   if (error) throw error;
 }
 
@@ -1899,13 +1869,14 @@ function renderCancelSelector() {
   const select = el("cancelSignupSelect");
   if (!select) return;
   const current = select.value;
+  const cancellable = state.signups.filter((signup) => publicCancelTokenFor(signup.id));
   select.innerHTML = `
-    <option value="">${state.signups.length ? "Choose your signup" : "No current signups yet"}</option>
-    ${state.signups.map((signup) => `
+    <option value="">${cancellable.length ? "Choose your signup" : "No signups from this browser"}</option>
+    ${cancellable.map((signup) => `
       <option value="${escapeHtml(signup.id)}">${escapeHtml(signupFullName(signup))} - ${escapeHtml(signup.status)} #${signup.position}</option>
     `).join("")}
   `;
-  select.disabled = state.signups.length === 0;
+  select.disabled = cancellable.length === 0;
   if ([...select.options].some((option) => option.value === current)) select.value = current;
 }
 
@@ -1928,6 +1899,22 @@ function toggleResponsiblePlayer() {
 
 function signedByComment(name) {
   return name ? `Signed up by ${name}.` : null;
+}
+
+function publicCancelTokenKey(signupId) {
+  return `aesfc_cancel_token_${signupId}`;
+}
+
+function storePublicCancelTokens(signups = []) {
+  signups.forEach((signup) => {
+    if (signup?.id && signup?.cancel_token) {
+      localStorage.setItem(publicCancelTokenKey(signup.id), signup.cancel_token);
+    }
+  });
+}
+
+function publicCancelTokenFor(signupId) {
+  return localStorage.getItem(publicCancelTokenKey(signupId)) || "";
 }
 
 function getExtraPlayerNames() {
@@ -1990,45 +1977,20 @@ async function submitSignup(event) {
     }
     if (!isGameOpen(game)) throw new Error(`Signup is closed. It opens ${fmtOpenDate.format(new Date(game.signup_opens_at || signupOpenForGame(game.game_date)))} Europe/Zagreb.`);
 
-    const token = crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", "");
-    const group = crypto.randomUUID();
-    const baseTime = Date.now();
-    const submitter = splitFullName(mainName);
-    const rows = [{
-      game_id: game.id,
-      signup_group: group,
-      first_name: submitter.firstName,
-      last_name: submitter.lastName,
-      nationality: nationalityForName(mainName),
-      email: "not-collected@aesfc.local",
-      phone: "not collected",
-      comments: signingForSelf ? null : signedByComment(responsibleName),
-      signed_up_by: signingForSelf ? null : responsibleName,
-      played_before: "no",
-      cancel_token: token,
-      created_at: new Date(baseTime).toISOString()
-    }];
+    const rows = requestedNames.map((name, index) => ({
+      full_name: splitFullName(name).fullName,
+      nationality: nationalityForName(name),
+      comments: index === 0 && signingForSelf ? null : signedByComment(responsibleName),
+      signed_up_by: index === 0 && signingForSelf ? null : responsibleName
+    }));
 
-    extraNames.slice(0, Math.max(0, playerCount - 1)).forEach((name, index) => {
-      const player = splitFullName(name);
-      rows.push({
-        game_id: game.id,
-        signup_group: group,
-        first_name: player.firstName,
-        last_name: player.lastName,
-        nationality: nationalityForName(name),
-        email: "not-collected@aesfc.local",
-        phone: "not collected",
-        comments: signedByComment(responsibleName),
-        signed_up_by: responsibleName,
-        played_before: "no",
-        cancel_token: token,
-        created_at: new Date(baseTime + index + 1).toISOString()
-      });
+    const { data, error } = await db.rpc("aesfc_public_signup", {
+      p_game_id: game.id,
+      p_players: rows,
+      p_signup_password: SIGNUP_PASSWORD
     });
-
-    const { data, error } = await db.from("aesfc_signups").insert(rows).select();
     if (error) throw error;
+    storePublicCancelTokens(data || []);
     const ranked = rankSignups([...(state.signups || []), ...(data || [])]);
     const firstSpot = ranked.find((signup) => signup.id === data[0].id);
     const countText = rows.length === 1 ? "1 player" : `${rows.length} players`;
@@ -2067,12 +2029,14 @@ async function cancelSignup(event) {
   }
   try {
     requireDb();
-    const { error } = await db
-      .from("aesfc_signups")
-      .update({ cancelled_at: new Date().toISOString() })
-      .eq("id", signupId)
-      .is("cancelled_at", null);
+    const token = publicCancelTokenFor(signupId);
+    if (!token) throw new Error("This browser does not have permission to cancel that signup. Use the original signup device/link, or ask an admin.");
+    const { data: cancelled, error } = await db.rpc("aesfc_public_cancel_signup", {
+      p_signup_id: signupId,
+      p_cancel_token: token
+    });
     if (error) throw error;
+    (cancelled || []).forEach((item) => localStorage.removeItem(publicCancelTokenKey(item.id)));
     form.reset();
     setMessage(message, "You have cancelled your signup. Please message the group to let them know you’ve cancelled. If this was a mistake, sign up again if spots are still available.");
     await loadPublicState();
@@ -2088,20 +2052,12 @@ async function tryCancellationFromUrl() {
   if (!signupId || !token || !configured) return;
   if (!confirm("Cancel this signup?")) return;
   try {
-    const { data: signup, error: lookupError } = await db
-      .from("aesfc_signups")
-      .select("signup_group")
-      .eq("id", signupId)
-      .eq("cancel_token", token)
-      .single();
-    if (lookupError || !signup) throw new Error("This cancellation link is invalid or the signup was already cancelled.");
-    const { error } = await db
-      .from("aesfc_signups")
-      .update({ cancelled_at: new Date().toISOString() })
-      .eq("signup_group", signup.signup_group)
-      .eq("cancel_token", token)
-      .is("cancelled_at", null);
+    const { data: cancelled, error } = await db.rpc("aesfc_public_cancel_signup", {
+      p_signup_id: signupId,
+      p_cancel_token: token
+    });
     if (error) throw error;
+    (cancelled || []).forEach((item) => localStorage.removeItem(publicCancelTokenKey(item.id)));
     history.replaceState({}, "", location.pathname);
     setMessage(el("signupMessage"), "Your signup has been cancelled.");
     await loadPublicState();
@@ -2710,17 +2666,25 @@ async function saveRegularsBatch() {
   try {
     for (const draft of changed) {
       const { full_name: fullName, nationality, guaranteed_games: guaranteedGames } = draft.payload;
-      const { error } = await db.from("aesfc_regulars").update({
-        full_name: fullName,
-        nationality,
-        guaranteed_signup: guaranteedGames.length > 0,
-        guaranteed_games: guaranteedGames
-      }).eq("id", draft.id);
-      if (error) {
+      try {
+        const { error } = await db.from("aesfc_regulars").update({
+          full_name: fullName,
+          nationality,
+          guaranteed_signup: guaranteedGames.length > 0,
+          guaranteed_games: guaranteedGames
+        }).eq("id", draft.id);
+        if (error) throw error;
+        await upsertPlayerProfile(fullName, nationality);
+        const regular = (state.regulars || []).find((item) => String(item.id) === String(draft.id));
+        if (regular) {
+          regular.full_name = fullName;
+          regular.nationality = nationality;
+          regular.guaranteed_signup = guaranteedGames.length > 0;
+          regular.guaranteed_games = guaranteedGames;
+        }
+      } catch (error) {
         failures.push(`${fullName}: ${error.message}`);
-        continue;
       }
-      await upsertPlayerProfile(fullName, nationality);
     }
   } finally {
     state.savingRegulars = false;
@@ -2728,7 +2692,8 @@ async function saveRegularsBatch() {
   if (failures.length) {
     state.regularsDirty = true;
     if (save) save.disabled = false;
-    throw new Error(`Some regulars were not saved: ${failures.join(" | ")}`);
+    const savedCount = changed.length - failures.length;
+    throw new Error(`Regulars save incomplete. Saved ${savedCount} row${savedCount === 1 ? "" : "s"}; failed ${failures.length}: ${failures.join(" | ")}`);
   }
   state.regulars = await loadRegulars();
   renderAdminRegulars();
@@ -2822,19 +2787,25 @@ async function saveScheduleBatch() {
   if (save) save.disabled = true;
   try {
     for (const draft of changed) {
-      const { error } = await db.from("aesfc_games").update(draft.payload).eq("id", draft.id);
+      const { data: saved, error } = await db.rpc("aesfc_admin_update_game_schedule", {
+        p_game_id: draft.id,
+        p_original_game_date: draft.baseline.game_date,
+        p_game_date: draft.payload.game_date,
+        p_start_time: draft.payload.start_time,
+        p_end_time: draft.payload.end_time,
+        p_location_name: draft.payload.location_name,
+        p_location_url: draft.payload.location_url,
+        p_signup_opens_at: draft.payload.signup_opens_at,
+        p_is_active: draft.payload.is_active,
+        p_game_status: draft.payload.game_status,
+        p_is_recurring: draft.payload.is_recurring
+      });
       if (error) {
         failures.push(`${draft.payload.game_date}: ${error.message}`);
         continue;
       }
-      if (draft.baseline.game_date !== draft.payload.game_date) {
-        await upsertFixtureException(draft.baseline.game_date, "moved", draft.id);
-      }
-      if (!draft.payload.is_active || draft.payload.game_status !== "active") {
-        await upsertFixtureException(draft.payload.game_date, draft.payload.game_status || "skipped", draft.id);
-      } else if (draft.baseline.game_date === draft.payload.game_date) {
-        await clearFixtureException(draft.payload.game_date);
-      }
+      const game = (state.games || []).find((item) => String(item.id) === String(draft.id));
+      if (game) Object.assign(game, saved || draft.payload);
     }
   } finally {
     state.savingSchedule = false;
@@ -2842,7 +2813,8 @@ async function saveScheduleBatch() {
   if (failures.length) {
     state.scheduleDirty = true;
     if (save) save.disabled = false;
-    throw new Error(`Some schedule rows were not saved: ${failures.join(" | ")}`);
+    const savedCount = changed.length - failures.length;
+    throw new Error(`Schedule save incomplete. Saved ${savedCount} row${savedCount === 1 ? "" : "s"}; failed ${failures.length}: ${failures.join(" | ")}`);
   }
   await loadUpcomingGames();
   state.signupCountsByGame = await loadSignupCountsForGames(state.games);
@@ -3148,15 +3120,8 @@ async function removeGame(gameId) {
     ? `Remove ${label}?\n\nThis game has ${count} signup(s). It will be hidden from public signup and automatic guarantees, but the signup records will be preserved.`
     : `Remove ${label}?\n\nThis will hide the fixture from public signup and automatic guarantees.`;
   if (!doubleConfirm(warning)) return;
-  const { error } = await db
-    .from("aesfc_games")
-    .update({
-      is_active: false,
-      game_status: "removed"
-    })
-    .eq("id", gameId);
+  const { error } = await db.rpc("aesfc_admin_remove_game", { p_game_id: gameId });
   if (error) throw error;
-  await upsertFixtureException(game.game_date, "removed", gameId);
   setMessage(el("adminMessage"), "Game removed from public signup. Existing signup data was preserved.");
 }
 
