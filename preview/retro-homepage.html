@@ -28,7 +28,6 @@
 
       <section class="intro" aria-label="AES FC introduction">
         <div class="intro-copy">
-          <p class="eyebrow">Saturday 09:00 Europe/Zagreb</p>
           <h1>Football in Split.</h1>
           <p>Internationals &amp; locals. Since 2015.</p>
         </div>
@@ -37,12 +36,6 @@
           <div class="slides">
             <figure class="slide active">
               <img data-photo-slot="0" src="assets/aesfc-current-photo.jpg" alt="AES FC team photo">
-            </figure>
-            <figure class="slide">
-              <img data-photo-slot="1" src="../public/photos/aes-placeholder-1.svg" alt="AES FC match photo">
-            </figure>
-            <figure class="slide">
-              <img data-photo-slot="2" src="../public/photos/aes-placeholder-2.svg" alt="AES FC evening football photo">
             </figure>
           </div>
           <div class="slideshow-controls" aria-label="Photo controls">
@@ -57,22 +50,23 @@
         <div class="section-head">
           <p class="eyebrow">Choose game</p>
           <h2>Upcoming fixtures</h2>
+          <p class="fixture-note">Signup for next week opens every Saturday at 09:00, Split time.</p>
         </div>
         <div class="fixture-list">
           <button class="fixture active" type="button" aria-pressed="true">
             <span class="fixture-date">Mon 12 Oct</span>
             <span class="fixture-main">20:00 · Bili’s Pitch</span>
-            <span class="fixture-status open">Open since Sat 09:00 · 8/12</span>
+            <span class="fixture-status open">4 spots left</span>
           </button>
           <button class="fixture" type="button">
             <span class="fixture-date">Wed 14 Oct</span>
             <span class="fixture-main">21:00 · Gusar</span>
-            <span class="fixture-status">Open since Sat 09:00 · 5/12</span>
+            <span class="fixture-status full">Full · Join waiting list</span>
           </button>
           <button class="fixture" type="button">
             <span class="fixture-date">Fri 16 Oct</span>
             <span class="fixture-main">20:00 · Gusar</span>
-            <span class="fixture-status">Open since Sat 09:00 · 2/12</span>
+            <span class="fixture-status">Signup opens Sat 10 Oct, 09:00</span>
           </button>
         </div>
       </section>
@@ -123,14 +117,14 @@
             <strong>8/12</strong>
           </div>
           <ol>
-            <li><span>Dino Vučić</span><em aria-label="Croatia">🇭🇷</em></li>
-            <li><span>Flo Psaïla</span><em aria-label="France">🇫🇷</em></li>
-            <li><span>Igor Sadovoi</span><em aria-label="Croatia">🇭🇷</em></li>
-            <li><span>Michael Freer</span><em aria-label="United Kingdom">🇬🇧</em></li>
-            <li><span>Agustin Fontanilla</span><em aria-label="Argentina">🇦🇷</em></li>
-            <li><span>Oscar Narvaez</span><em aria-label="Australia">🇦🇺</em></li>
-            <li><span>Vito Pauletić</span><em aria-label="Croatia">🇭🇷</em></li>
-            <li><span>Andrii Frolov</span><em aria-label="Ukraine">🇺🇦</em></li>
+            <li><span>Dino Vučić</span><img class="flag-bg" src="assets/flags/hr.svg" alt="Croatia flag"></li>
+            <li><span>Flo Psaïla</span><img class="flag-bg" src="assets/flags/fr.svg" alt="France flag"></li>
+            <li><span>Igor Sadovoi</span><img class="flag-bg" src="assets/flags/hr.svg" alt="Croatia flag"></li>
+            <li><span>Michael Freer</span><img class="flag-bg" src="assets/flags/gb.svg" alt="United Kingdom flag"></li>
+            <li><span>Agustin Fontanilla</span><img class="flag-bg" src="assets/flags/ar.svg" alt="Argentina flag"></li>
+            <li><span>Oscar Narvaez</span><img class="flag-bg" src="assets/flags/au.svg" alt="Australia flag"></li>
+            <li><span>Vito Pauletić</span><img class="flag-bg" src="assets/flags/hr.svg" alt="Croatia flag"></li>
+            <li><span>Andrii Frolov</span><img class="flag-bg" src="assets/flags/ua.svg" alt="Ukraine flag"></li>
           </ol>
           <p class="subs">Subs · No subs yet</p>
         </aside>
@@ -140,19 +134,24 @@
         <div class="result-card">
           <p class="eyebrow">Latest result</p>
           <h2>Wed 23 Sep</h2>
-          <div class="score">8–9</div>
+          <div class="score-line" aria-label="Final score 8 to 9">
+            <span class="score">8</span>
+            <span class="score-dash">–</span>
+            <span class="score">9</span>
+          </div>
+          <p class="stat-key">G = goals · A = assists</p>
           <div class="teams">
-            <ul>
-              <li><strong>Jere S.</strong><span>⚽ 🅰️ 🅰️ 🅰️ 🅰️</span></li>
-              <li><strong>Lovre R.</strong><span>⚽ ⚽ ⚽ 🅰️</span></li>
-              <li><strong>Dino V.</strong><span>⚽ ⚽ 🅰️</span></li>
-              <li><strong>Igor S.</strong><span>⚽</span></li>
+            <ul class="team-list team-list-left" aria-label="Team with 8 goals">
+              <li><strong>Jere S.</strong><span class="stat-mark">1G · 4A</span></li>
+              <li><strong>Lovre R.</strong><span class="stat-mark">3G · 1A</span></li>
+              <li><strong>Dino V.</strong><span class="stat-mark">2G · 1A</span></li>
+              <li><strong>Igor S.</strong><span class="stat-mark">1G</span></li>
             </ul>
-            <ul>
-              <li><strong>Marcos B.</strong><span>⚽ ⚽ ⚽ ⚽ ⚽</span></li>
-              <li><strong>Flo P.</strong><span>⚽ ⚽ 🅰️</span></li>
-              <li><strong>Andrii F.</strong><span>⚽ 🅰️ 🅰️</span></li>
-              <li><strong>Roman R.</strong><span>🅰️ 🅰️</span></li>
+            <ul class="team-list team-list-right" aria-label="Team with 9 goals">
+              <li><strong>Marcos B.</strong><span class="stat-mark">5G</span></li>
+              <li><strong>Flo P.</strong><span class="stat-mark">2G · 1A</span></li>
+              <li><strong>Andrii F.</strong><span class="stat-mark">1G · 2A</span></li>
+              <li><strong>Roman R.</strong><span class="stat-mark">2A</span></li>
             </ul>
           </div>
         </div>
@@ -178,8 +177,6 @@
         </div>
         <div class="gallery-grid">
           <figure><img data-gallery-slot="0" src="assets/aesfc-current-photo.jpg" alt="AES FC team photo"><figcaption>Cold March Nights of 2021</figcaption></figure>
-          <figure><img data-gallery-slot="1" src="../public/photos/aes-placeholder-1.svg" alt="AES FC pitch photo"><figcaption>Match night</figcaption></figure>
-          <figure><img data-gallery-slot="2" src="../public/photos/aes-placeholder-2.svg" alt="AES FC evening football photo"><figcaption>Evening football</figcaption></figure>
         </div>
       </section>
     </main>
@@ -187,17 +184,40 @@
     <script>
       (() => {
         const fallbackPhotos = [
-          { title: "Cold March Nights of 2021", url: "assets/aesfc-current-photo.jpg", caption: "Cold March Nights of 2021" },
-          { title: "AES FC match photo", url: "../public/photos/aes-placeholder-1.svg", caption: "Match night" },
-          { title: "AES FC evening football photo", url: "../public/photos/aes-placeholder-2.svg", caption: "Evening football" }
+          { title: "Cold March Nights of 2021", url: "assets/aesfc-current-photo.jpg", caption: "Cold March Nights of 2021" }
         ];
         const normalizeUrl = (url) => {
           if (!url) return "";
           if (url.startsWith("data:") || url.startsWith("http") || url.startsWith("../")) return url;
           return `../${url.replace(/^\\.\\//, "")}`;
         };
+        const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (character) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#39;"
+        })[character]);
         const applyPhotos = (photos) => {
-          const selected = photos.length ? photos : fallbackPhotos;
+          const realPhotos = photos.filter((photo) => !String(photo.url || "").includes("aes-placeholder"));
+          const selected = realPhotos.length ? realPhotos : fallbackPhotos;
+          const slidesWrap = document.querySelector(".slides");
+          const gallery = document.querySelector(".gallery-grid");
+          if (slidesWrap) {
+            slidesWrap.innerHTML = selected.map((photo, slot) => `
+              <figure class="slide ${slot === 0 ? "active" : ""}">
+                <img data-photo-slot="${slot}" src="${escapeHtml(normalizeUrl(photo.url))}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
+              </figure>
+            `).join("");
+          }
+          if (gallery) {
+            gallery.innerHTML = selected.map((photo, slot) => `
+              <figure>
+                <img data-gallery-slot="${slot}" src="${escapeHtml(normalizeUrl(photo.url))}" alt="${escapeHtml(photo.title || "AES FC football photo")}">
+                <figcaption>${escapeHtml(photo.caption || photo.title || "AES FC photo")}</figcaption>
+              </figure>
+            `).join("");
+          }
           document.querySelectorAll("[data-photo-slot]").forEach((img, slot) => {
             const photo = selected[slot % selected.length];
             img.src = normalizeUrl(photo.url);
@@ -210,11 +230,14 @@
             const caption = img.closest("figure")?.querySelector("figcaption");
             if (caption) caption.textContent = photo.caption || photo.title || "AES FC photo";
           });
+          const photoStory = document.querySelector(".photo-story");
+          photoStory?.classList.toggle("single-photo", selected.length < 2);
+          photoStory?.classList.toggle("has-multiple", selected.length > 1);
         };
 
         const loadLivePhotos = () => new Promise((resolve) => {
           const cfg = window.AES_CONFIG || {};
-          if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+          if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || typeof XMLHttpRequest === "undefined") {
             resolve(fallbackPhotos);
             return;
           }
@@ -239,9 +262,10 @@
           request.send();
         });
 
+        applyPhotos(fallbackPhotos);
         loadLivePhotos().then(applyPhotos);
 
-        const slides = Array.from(document.querySelectorAll(".slide"));
+        const getSlides = () => Array.from(document.querySelectorAll(".slide"));
         const controls = document.querySelector(".slideshow-controls");
         const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
         let index = 0;
@@ -249,6 +273,8 @@
         let timer = null;
 
         const show = (next) => {
+          const slides = getSlides();
+          if (!slides.length) return;
           index = (next + slides.length) % slides.length;
           slides.forEach((slide, slideIndex) => slide.classList.toggle("active", slideIndex === index));
         };
@@ -256,7 +282,7 @@
         const restart = () => {
           window.clearInterval(timer);
           timer = null;
-          if (!paused && !reduceMotion) timer = window.setInterval(() => show(index + 1), 5200);
+          if (!paused && !reduceMotion && getSlides().length > 1) timer = window.setInterval(() => show(index + 1), 5200);
         };
 
         controls?.addEventListener("click", (event) => {

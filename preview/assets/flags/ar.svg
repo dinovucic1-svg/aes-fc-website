@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 180" role="img" aria-label="Argentina flag">
+  <rect width="300" height="60" fill="#75aadb"/>
+  <rect y="60" width="300" height="60" fill="#fff"/>
+  <rect y="120" width="300" height="60" fill="#75aadb"/>
+  <circle cx="150" cy="90" r="17" fill="#f6b40e"/>
+  <g stroke="#8b5a00" stroke-width="2">
+    <path d="M150 64v18M150 98v18M124 90h18M158 90h18"/>
+    <path d="M132 72l13 13M155 95l13 13M168 72l-13 13M145 95l-13 13"/>
+  </g>
+</svg>

@@ -44,12 +44,12 @@ body::before {
 body::after {
   content: "";
   position: fixed;
-  inset: auto 0 0;
+  inset: auto 0 4vh;
   z-index: -2;
-  height: 54vh;
+  height: 34vh;
   pointer-events: none;
-  opacity: .105;
-  background: url("../public/illustrations/split-waterfront-retro.svg") center bottom / min(1080px, 125vw) auto no-repeat;
+  opacity: .055;
+  background: url("../public/illustrations/split-waterfront-retro.svg") right bottom / min(680px, 76vw) auto no-repeat;
 }
 
 a { color: inherit; }
@@ -162,9 +162,9 @@ main {
   position: absolute;
   right: 5%;
   bottom: -24px;
-  width: 220px;
-  height: 96px;
-  opacity: .18;
+  width: 180px;
+  height: 76px;
+  opacity: .12;
   pointer-events: none;
   background: url("../public/illustrations/split-waterfront-retro.svg") center / contain no-repeat;
 }
@@ -255,9 +255,13 @@ main {
   right: 10px;
   bottom: 10px;
   z-index: 5;
-  display: flex;
+  display: none;
   gap: 6px;
   align-items: center;
+}
+
+.photo-story.has-multiple .slideshow-controls {
+  display: flex;
 }
 
 .slideshow-controls button {
@@ -284,6 +288,14 @@ main {
   align-items: start;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--line);
+}
+
+.fixture-note {
+  max-width: 18rem;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: .92rem;
+  line-height: 1.4;
 }
 
 .section-head h2,
@@ -345,6 +357,8 @@ main {
 }
 
 .fixture-status.open { color: var(--navy); }
+
+.fixture-status.full { color: var(--red-deep); }
 
 .signup-area {
   display: grid;
@@ -463,10 +477,14 @@ select {
 
 .cancel-action {
   width: 100%;
-  margin-top: 9px;
-  color: var(--navy) !important;
+  min-height: auto !important;
+  margin-top: 10px;
+  padding: 2px 0 !important;
+  color: var(--muted) !important;
   background: transparent !important;
-  border: 1px solid rgba(13, 44, 73, .24) !important;
+  border: 0 !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .list-title {
@@ -493,6 +511,8 @@ select {
 .list-panel li,
 .subs,
 .ranking-list li {
+  position: relative;
+  overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
@@ -503,13 +523,23 @@ select {
 
 .list-panel li span,
 .ranking-list strong {
+  position: relative;
+  z-index: 2;
   font-weight: 620;
 }
 
-.list-panel li em {
-  font-size: 1.25rem;
-  font-style: normal;
-  line-height: 1;
+.flag-bg {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  z-index: 1;
+  width: 104px;
+  height: 62px;
+  object-fit: cover;
+  opacity: .16;
+  transform: translateY(-50%);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.5) 32%, #000 100%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.5) 32%, #000 100%);
 }
 
 .ranking-list em {
@@ -542,20 +572,58 @@ select {
   font-size: clamp(1.38rem, 2.8vw, 2.15rem);
 }
 
+.score-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  gap: 12px;
+  margin: 2px 0 4px;
+}
+
 .score {
-  margin: 2px 0 14px;
+  margin: 0;
   color: var(--red);
   font-size: clamp(4rem, 9vw, 6.5rem);
   line-height: .86;
 }
 
+.score:first-child { text-align: right; }
+
+.score:last-child { text-align: left; }
+
+.score-dash {
+  color: var(--navy);
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 700;
+  line-height: .9;
+}
+
+.stat-key {
+  margin: 0 0 13px;
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 560;
+  text-align: center;
+}
+
 .teams {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 
-.teams ul {
+.teams::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(13, 44, 73, .16);
+}
+
+.team-list {
   display: grid;
   gap: 6px;
   margin: 0;
@@ -575,9 +643,13 @@ select {
   font-weight: 620;
 }
 
-.teams span {
-  color: var(--red);
+.stat-mark {
+  min-width: 4.8rem;
+  color: var(--navy);
+  font-size: .9rem;
   font-weight: 650;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .ranking-list {
@@ -753,9 +825,22 @@ select {
   }
 
   .form-grid,
-  .teams,
   .gallery-grid {
     grid-template-columns: 1fr;
+  }
+
+  .result-card .teams {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .result-card .teams li {
+    gap: 6px;
+  }
+
+  .stat-mark {
+    min-width: 3.5rem;
+    font-size: .78rem;
   }
 
   .signup-panel,
@@ -785,20 +870,41 @@ select {
   .score {
     font-size: clamp(4rem, 21vw, 5.8rem);
   }
+
+  .score-line {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 430px) {
   .site-header {
     align-items: center;
+    gap: 10px;
+    padding-inline: 10px;
+  }
+
+  .brand {
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .brand img {
+    width: 42px;
+    height: 42px;
   }
 
   .brand strong {
-    font-size: 1.2rem;
+    font-size: 1.04rem;
+  }
+
+  .brand small {
+    display: none;
   }
 
   nav {
-    gap: 7px;
-    font-size: .83rem;
+    flex: 0 0 auto;
+    gap: 6px;
+    font-size: .78rem;
   }
 
   .photo-story {
