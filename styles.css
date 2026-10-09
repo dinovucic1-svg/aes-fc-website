@@ -5909,3 +5909,283 @@ body.public-retro::after {
     max-width: 54%;
   }
 }
+
+/* Focused visual correction: layout, colour hierarchy, route separation */
+.site-header {
+  color: #fff8e8;
+  background: #b93a35;
+  border-bottom: 1px solid rgba(61, 19, 22, .32);
+  backdrop-filter: none;
+}
+
+.brand strong,
+.brand small,
+.site-header nav,
+.site-header nav a {
+  color: #fff8e8;
+}
+
+.brand img {
+  background: #fffaf0;
+  border: 2px solid rgba(255, 248, 232, .9);
+}
+
+.photo-story::before {
+  width: 36%;
+  background:
+    linear-gradient(90deg, var(--cream) 0%, rgba(244, 232, 208, .78) 38%, rgba(244, 232, 208, .22) 76%, transparent 100%),
+    linear-gradient(180deg, rgba(244, 232, 208, .62) 0%, transparent 20%, transparent 82%, rgba(244, 232, 208, .62) 100%);
+}
+
+.photo-story::after {
+  opacity: .18;
+  background:
+    radial-gradient(ellipse at 0 0, rgba(244, 232, 208, .72), transparent 32%),
+    radial-gradient(ellipse at 100% 0, rgba(244, 232, 208, .42), transparent 28%),
+    radial-gradient(ellipse at 100% 100%, rgba(244, 232, 208, .5), transparent 26%),
+    linear-gradient(90deg, rgba(244, 232, 208, .28), transparent 20%, transparent 84%, rgba(244, 232, 208, .28));
+}
+
+.slide img {
+  filter: sepia(.04) saturate(.96) contrast(.98) brightness(1.01);
+}
+
+.signup-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+  gap: 18px 28px;
+  align-items: start;
+}
+
+.availability {
+  grid-column: 1 / -1;
+  max-width: none;
+  padding: 0 0 4px;
+  border-bottom: 1px solid rgba(13, 44, 73, .12);
+}
+
+.availability h2 {
+  font-size: clamp(1.7rem, 2.8vw, 2.35rem);
+}
+
+.availability .status-banner {
+  max-width: 42rem;
+}
+
+.signup-column {
+  grid-column: 1;
+  display: grid;
+  gap: 8px;
+}
+
+.signup-panel {
+  order: 0;
+}
+
+.cancel-form {
+  order: 1;
+}
+
+.rules-drawer {
+  order: 2;
+}
+
+.list-panel {
+  grid-column: 2;
+  align-self: start;
+}
+
+.signup-panel {
+  padding-bottom: 14px;
+}
+
+.signup-panel .primary {
+  margin-top: 5px;
+}
+
+.cancel-form {
+  margin: 7px 0 0;
+  padding: 6px 0 0;
+  border-top: 0;
+}
+
+.cancel-form summary {
+  color: var(--muted);
+  font-size: .86rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.rules-drawer {
+  margin-top: 8px;
+  padding-top: 9px;
+}
+
+.list-title {
+  align-items: center;
+}
+
+.list-block h3 {
+  font-size: .96rem;
+}
+
+.results-section {
+  border-top: 0;
+  background: transparent;
+}
+
+.result-card > .results-title-row {
+  margin: -17px -17px 14px;
+  padding: 12px 17px;
+  color: #fff8e8;
+  background: var(--navy);
+}
+
+.result-card > .results-title-row .eyebrow,
+.result-card > .results-title-row h2,
+.result-card > .results-title-row label {
+  color: #fff8e8;
+}
+
+.result-card > .results-title-row select {
+  min-height: 38px;
+  color: var(--navy);
+  background: #fff8e8;
+  border-color: rgba(255, 248, 232, .65);
+}
+
+.result-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-bottom: 12px;
+  color: var(--red);
+  text-align: center;
+}
+
+.result-date {
+  order: 0;
+  width: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: .86rem;
+  font-weight: 620;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: none;
+}
+
+.result-score {
+  order: 1;
+  color: var(--red);
+}
+
+.result-score-block small {
+  order: 2;
+  color: var(--muted);
+}
+
+.result-summary-teams,
+.teams {
+  align-items: start;
+}
+
+.result-team-compact:first-child,
+.team-list-left,
+.result-team-compact + .result-team-compact,
+.team-list-right {
+  text-align: left;
+}
+
+.rank-cell {
+  color: var(--navy);
+  font-weight: 620;
+}
+
+.rank-move {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 500;
+}
+
+.rank-move.up,
+.rank-move.down {
+  color: var(--muted);
+}
+
+#adminView {
+  display: none;
+}
+
+body.admin-route main > section:not(#adminView) {
+  display: none !important;
+}
+
+body.admin-route #adminView {
+  display: block;
+}
+
+body.admin-route main {
+  min-height: calc(100vh - 96px);
+}
+
+@media (max-width: 820px) {
+  .signup-area {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .availability,
+  .signup-column,
+  .list-panel {
+    grid-column: 1;
+  }
+
+  .availability {
+    order: 0;
+  }
+
+  .signup-column {
+    order: 1;
+  }
+
+  .list-panel {
+    order: 2;
+  }
+
+  .cancel-form {
+    margin-top: 6px;
+  }
+
+  .result-card > .results-title-row {
+    margin: -14px -14px 12px;
+    padding: 11px 14px;
+  }
+}
+
+@media (max-width: 430px) {
+  .site-header {
+    padding-block: 8px;
+  }
+
+  .brand img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .site-header nav {
+    gap: 5px;
+  }
+
+  .photo-story::before {
+    width: 24%;
+  }
+
+  .result-team-compact,
+  .team-list {
+    padding-inline: 7px;
+  }
+}

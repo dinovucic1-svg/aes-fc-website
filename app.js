@@ -299,6 +299,7 @@ const fmtDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeri
 const fmtTime = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zagreb" });
 const fmtShortGame = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "Europe/Zagreb" });
 const fmtShortResult = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "Europe/Zagreb" });
+const fmtCompactResult = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Zagreb" });
 const fmtOpenDate = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Zagreb" });
 const fmtFixtureOpen = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Zagreb" });
 
@@ -328,6 +329,10 @@ function hasAdminAccess() {
 
 function assertAdmin() {
   if (!hasAdminAccess()) throw new Error(usesSupabaseAdminAuth() ? "Please sign in as an admin." : "Wrong admin password.");
+}
+
+function updateRouteMode() {
+  document.body.classList.toggle("admin-route", window.location.hash === "#adminView");
 }
 
 function hasUnsavedAdminEdits() {
@@ -1527,7 +1532,7 @@ function renderPlayerStats(results) {
           const flag = nationalityFlag(nationality);
           return `
           <tr class="${!isAllTime && index < 3 ? `podium-row podium-${index + 1}` : ""}">
-            <td class="rank-cell">${!isAllTime && index < 3 ? ["🥇", "🥈", "🥉"][index] : index + 1}</td>
+            <td class="rank-cell">${index + 1}</td>
             <td class="move-cell">${renderRankMovement(movement.get(row.name))}</td>
             <td class="player-cell ${flag ? "has-flag" : ""}">
               <strong>${escapeHtml(row.name)}</strong>
@@ -1603,7 +1608,7 @@ function renderResultCard(result) {
   return `
     <article class="result-card match-graphic-card">
       <div class="result-score-block">
-        <span class="result-date">${escapeHtml(formatResultDate(result.game_date))}</span>
+        <span class="result-date">${escapeHtml(formatCompactResultDate(result.game_date))}</span>
         <strong class="result-score">${escapeHtml(result.team_a_score)}-${escapeHtml(result.team_b_score)}</strong>
         ${hasStats ? "" : "<small>No individual stats available</small>"}
       </div>
@@ -1725,6 +1730,10 @@ function formatResultDate(dateString) {
 
 function formatShortResultDate(dateString) {
   return fmtShortResult.format(new Date(`${dateString}T12:00:00+02:00`));
+}
+
+function formatCompactResultDate(dateString) {
+  return fmtCompactResult.format(new Date(`${dateString}T12:00:00+02:00`)).replace(",", "").replace("Sept", "Sep");
 }
 
 function renderRules() {
@@ -1878,7 +1887,6 @@ function renderSheetStatus() {
     setText("selectedGameSummary", "Live signups will appear here once Supabase is connected.");
     setText("listGameSummary", "Connect Supabase");
     setText("openSignupCount", "");
-    el("openSignupCount").textContent = "";
     el("sheetStatus").classList.remove("hidden");
     el("sheetStatus").textContent = "The site is ready. Connect Supabase to activate live signups.";
     return;
@@ -1896,7 +1904,7 @@ function renderSheetStatus() {
   const openCount = visibleGames.filter(isGameOpen).length;
   const upcomingCount = visibleGames.length;
   const countText = openCount || upcomingCount;
-  setText("openSignupCount", `${playingCount}/${capacity} playing`);
+  setText("openSignupCount", "");
   el("sheetStatus").classList.toggle("hidden", game.is_open);
   el("sheetStatus").textContent = game.is_open
     ? ""
@@ -4887,6 +4895,8 @@ async function handleAdminClicks(event) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  updateRouteMode();
+  window.addEventListener("hashchange", updateRouteMode);
   renderAdminLoginMode();
   document.querySelector("[name='player_count']").addEventListener("input", toggleExtraPlayers);
   document.querySelector("[name='full_name_select']").addEventListener("change", toggleManualName);
