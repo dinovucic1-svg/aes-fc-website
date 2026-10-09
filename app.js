@@ -12,6 +12,11 @@ const TRACKER_PLAYERS_PER_SIDE = 6;
 const TRACKER_DRAFT_TABLE = "aesfc_tracker_drafts";
 const TRACKER_LOCAL_PREFIX = "aesfc_live_tracker_";
 const TRACKER_OWN_GOAL = "__own_goal__";
+const WEEKLY_GAME_DAYS = [
+  ["monday", "Monday"],
+  ["wednesday", "Wednesday"],
+  ["friday", "Friday"]
+];
 const PLAYER_ATTRIBUTE_TAGS = [
   ["speed", "Speed"],
   ["stamina", "Stamina"],
@@ -51,6 +56,14 @@ const PERMANENT_RECURRING_SLOTS = [
     location_name: "Gusar",
     location_url: GUSAR_MAP_URL,
     first_date: "2026-10-07"
+  },
+  {
+    weekday: 5,
+    start_time: "20:00",
+    end_time: "21:00",
+    location_name: "Gusar",
+    location_url: GUSAR_MAP_URL,
+    first_date: "2026-10-16"
   }
 ];
 const NATIONALITY_FLAGS = {
@@ -80,7 +93,7 @@ const NATIONALITY_FLAGS = {
 const DEFAULT_RULES_TITLE = "Signup rules";
 const DEFAULT_RULES_TEXT = `Only Dino, Igor, Michael and Miro can share the signup sheet link. If you have access to the signup link, please keep it private. This helps us know who has access, keep contact details available, and manage updates properly.
 
-For Wednesday 9 PM games, the signup sheet goes live every Saturday morning.
+Signups go live every Saturday at 9:00 AM Europe/Zagreb for the following week’s Monday, Wednesday and Friday games.
 
 Please give regulars from our WhatsApp group the first chance to sign up in the first 24 hours of the signup sheet being posted. After the 24 hours, you have the green light for people to sign up additional players.
 
@@ -113,6 +126,10 @@ const state = {
   statsMode: "overall",
   statsMonth: "",
   resultsMonth: "",
+  regularsDirty: false,
+  scheduleDirty: false,
+  showAllAdminGames: false,
+  signupCountsByGame: {},
   tracker: {
     gameDate: "",
     teamA: [],
@@ -206,13 +223,13 @@ function zagrebDateTime(dateString, time = "12:00") {
 }
 
 function signupOpenForGame(gameDate) {
-  return fridaySignupOpenForGame(gameDate);
+  return saturdaySignupOpenForGame(gameDate);
 }
 
-function fridaySignupOpenForGame(gameDate) {
+function saturdaySignupOpenForGame(gameDate) {
   const dow = isoDowFromDate(gameDate);
-  const daysBackToFriday = dow >= 5 ? dow - 5 : dow + 2;
-  return zagrebDateTime(addDays(gameDate, -daysBackToFriday), "09:00");
+  const weekMonday = addDays(gameDate, -(dow - 1));
+  return zagrebDateTime(addDays(weekMonday, -2), "09:00");
 }
 
 function toDatetimeLocalValue(value, fallbackDate) {
@@ -240,14 +257,14 @@ function getDefaultGameWindow() {
   const now = zagrebParts();
   const monday = addDays(now.date, -(now.isoDow - 1));
   const afterSaturdayOpen = now.isoDow === 6 && (now.hour > 9 || (now.hour === 9 && now.minute >= 0));
-  const beforeWednesdayClose = now.isoDow === 3 && now.hour < 22;
-  const inCurrentWindow = afterSaturdayOpen || now.isoDow === 7 || now.isoDow === 1 || now.isoDow === 2 || beforeWednesdayClose;
-  const gameDate = inCurrentWindow && [1, 2, 3].includes(now.isoDow) ? addDays(monday, 2) : addDays(monday, 9);
+  const beforeFridayClose = now.isoDow < 5 || (now.isoDow === 5 && now.hour < 21);
+  const inCurrentWindow = afterSaturdayOpen || now.isoDow === 7 || beforeFridayClose;
+  const gameDate = inCurrentWindow ? monday : addDays(monday, 7);
   return {
     game_date: gameDate,
-    start_time: "21:00",
-    end_time: "22:00",
-    location_name: "NK Bili As ADB Pitch",
+    start_time: "20:00",
+    end_time: "21:00",
+    location_name: "Bili's Pitch",
     location_url: MAP_URL,
     signup_opens_at: signupOpenForGame(gameDate),
     guest_delay_hours: 24
@@ -256,14 +273,20 @@ function getDefaultGameWindow() {
 
 function isGameOpen(game) {
   if (!game) return false;
+  if (game.is_active === false || game.game_status === "removed" || game.game_status === "skipped") return false;
+  if (isMistakenGeneratedGame(game)) return false;
   const opens = new Date(game.signup_opens_at || signupOpenForGame(game.game_date));
   const closes = new Date(zagrebDateTime(game.game_date, String(game.end_time || "22:00").slice(0, 5)));
   const now = new Date();
   return now >= opens && now < closes;
 }
 
+function isGameAvailable(game) {
+  return game && !isMistakenGeneratedGame(game) && game.is_active !== false && game.game_status !== "removed" && game.game_status !== "skipped";
+}
+
 function nextDisplayGame() {
-  const games = (state.publicGames?.length ? state.publicGames : state.games || []).filter(Boolean);
+  const games = (state.publicGames?.length ? state.publicGames : state.games || []).filter(isGameAvailable);
   if (!games.length) return state.game;
   return [...games].sort((a, b) => {
     const aStart = new Date(zagrebDateTime(a.game_date, String(a.start_time || "21:00").slice(0, 5)));
@@ -335,6 +358,62 @@ function signupNationality(signup) {
   return signup.nationality || nationalityForName(signupFullName(signup));
 }
 
+function gameDayKey(gameOrDate) {
+  const date = typeof gameOrDate === "string" ? gameOrDate : gameOrDate?.game_date;
+  const dayMap = { 1: "monday", 3: "wednesday", 5: "friday" };
+  return dayMap[isoDowFromDate(date)] || "";
+}
+
+function isMistakenGeneratedGame(game = {}) {
+  const date = String(game.game_date || "");
+  return date === "2026-10-09" || (date >= "2026-10-09" && isoDowFromDate(date) === 6);
+}
+
+function guaranteedGamesForRegular(regular = {}) {
+  if (Array.isArray(regular.guaranteed_games) && regular.guaranteed_games.length) {
+    return regular.guaranteed_games.filter((day) => WEEKLY_GAME_DAYS.some(([key]) => key === day));
+  }
+  return regular.guaranteed_signup ? ["monday", "wednesday"] : [];
+}
+
+function guaranteedGamesLabel(regular = {}) {
+  const games = guaranteedGamesForRegular(regular);
+  if (!games.length) return "No guaranteed spots";
+  if (games.length === WEEKLY_GAME_DAYS.length) return "All games";
+  return games
+    .map((key) => WEEKLY_GAME_DAYS.find(([day]) => day === key)?.[1])
+    .filter(Boolean)
+    .join(", ");
+}
+
+function guaranteedAppliesToGame(regular = {}, game = state.game) {
+  return guaranteedGamesForRegular(regular).includes(gameDayKey(game));
+}
+
+function guaranteedCountsByDay(useDom = false) {
+  const counts = Object.fromEntries(WEEKLY_GAME_DAYS.map(([key]) => [key, 0]));
+  const rows = document.querySelectorAll("#adminRegulars [data-regular-row]");
+  if (useDom && rows.length) {
+    rows.forEach((row) => selectedGuaranteedGames(row).forEach((key) => {
+      counts[key] = (counts[key] || 0) + 1;
+    }));
+    return counts;
+  }
+  state.regulars.forEach((regular) => guaranteedGamesForRegular(regular).forEach((key) => {
+    counts[key] = (counts[key] || 0) + 1;
+  }));
+  return counts;
+}
+
+function selectedGuaranteedGames(row) {
+  const selected = [...row.querySelectorAll("[name='regular_guaranteed_game']:checked")]
+    .map((input) => input.value)
+    .filter((day) => WEEKLY_GAME_DAYS.some(([key]) => key === day));
+  return row.querySelector("[name='regular_guaranteed_all']")?.checked
+    ? WEEKLY_GAME_DAYS.map(([key]) => key)
+    : selected;
+}
+
 function currentSignupNameSet() {
   return new Set(state.signups.map((signup) => normalizeName(signupFullName(signup))).filter(Boolean));
 }
@@ -355,7 +434,7 @@ function isAllowedSignupName(fullName, allowGuest = guestSignupAllowed()) {
 async function getCurrentGame() {
   requireDb();
   const games = await loadUpcomingGames();
-  const active = games[0];
+  const active = games.find(isGameAvailable);
   if (active) return { ...active, is_open: isGameOpen(active) };
 
   const defaultGame = await nextRecurringGameTemplate();
@@ -392,6 +471,8 @@ async function nextRecurringGameTemplate() {
     location_url: data.location_url || MAP_URL,
     signup_opens_at: signupOpenForGame(gameDate),
     is_recurring: true,
+    is_active: true,
+    game_status: "active",
     guest_delay_hours: Number(data.guest_delay_hours ?? 24)
   };
 }
@@ -417,7 +498,7 @@ async function loadUpcomingGames() {
     .limit(30);
   if (refreshedError) throw refreshedError;
   state.games = (refreshedGames || []).filter((game) => now < new Date(zagrebDateTime(game.game_date, String(game.end_time || "22:00").slice(0, 5))));
-  state.publicGames = state.games.slice(0, 2);
+  state.publicGames = state.games.filter(isGameAvailable).slice(0, 3);
   return state.games;
 }
 
@@ -425,6 +506,7 @@ async function ensurePermanentRecurringGames(existingGames = []) {
   if (!db) return;
   const existingDates = new Set((existingGames || []).map((game) => String(game.game_date)));
   const today = zagrebParts().date;
+  const scheduleStart = "2026-10-12";
   const targets = [];
   for (const slot of PERMANENT_RECURRING_SLOTS) {
     let gameDate = nextDateForWeekday(today, slot.weekday);
@@ -434,6 +516,7 @@ async function ensurePermanentRecurringGames(existingGames = []) {
     for (let index = 0; index < 10; index += 1) {
       const targetDate = addDays(gameDate, index * 7);
       if (slot.last_date && new Date(`${targetDate}T12:00:00Z`) > new Date(`${slot.last_date}T12:00:00Z`)) break;
+      if (new Date(`${targetDate}T12:00:00Z`) < new Date(`${scheduleStart}T12:00:00Z`) && targetDate !== "2026-09-30") continue;
       if (existingDates.has(targetDate)) continue;
       existingDates.add(targetDate);
       targets.push({
@@ -442,8 +525,10 @@ async function ensurePermanentRecurringGames(existingGames = []) {
         end_time: slot.end_time,
         location_name: slot.location_name,
         location_url: slot.location_url,
-        signup_opens_at: fridaySignupOpenForGame(targetDate),
+        signup_opens_at: signupOpenForGame(targetDate),
         is_recurring: true,
+        is_active: true,
+        game_status: "active",
         guest_delay_hours: 24
       });
     }
@@ -531,6 +616,20 @@ async function loadCancelledSignups(gameId) {
   return data || [];
 }
 
+async function loadSignupCountsForGames(games = state.games) {
+  const ids = (games || []).map((game) => game.id).filter(Boolean);
+  if (!ids.length) return {};
+  const { data, error } = await db
+    .from("aesfc_signups")
+    .select("game_id,cancelled_at")
+    .in("game_id", ids);
+  if (error) throw error;
+  return (data || []).reduce((counts, signup) => {
+    if (!signup.cancelled_at) counts[signup.game_id] = (counts[signup.game_id] || 0) + 1;
+    return counts;
+  }, {});
+}
+
 async function ensureOrganizerSignups(game) {
   if (!game?.id) return;
   const opens = new Date(game.signup_opens_at || signupOpenForGame(game.game_date));
@@ -541,12 +640,12 @@ async function ensureOrganizerSignups(game) {
 
   const { data: guaranteed, error: regularError } = await db
     .from("aesfc_regulars")
-    .select("full_name,nationality")
+    .select("full_name,nationality,guaranteed_signup,guaranteed_games")
     .eq("is_active", true)
-    .eq("guaranteed_signup", true)
     .order("full_name", { ascending: true });
   if (regularError) throw regularError;
-  const guaranteedPlayers = (guaranteed || []).filter((regular) => regular.full_name);
+  const guaranteedPlayers = (guaranteed || [])
+    .filter((regular) => regular.full_name && guaranteedAppliesToGame(regular, game));
   if (!guaranteedPlayers.length) return;
 
   const { data: existing, error: lookupError } = await db
@@ -568,7 +667,7 @@ async function ensureOrganizerSignups(game) {
         nationality: regular.nationality || "",
         email: "not-collected@aesfc.local",
         phone: "not collected",
-        comments: "Guaranteed signup",
+        comments: index < 12 ? "Guaranteed signup" : "Guaranteed signup - capacity conflict, listed as sub",
         signed_up_by: null,
         played_before: "no",
         cancel_token: crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", ""),
@@ -579,6 +678,13 @@ async function ensureOrganizerSignups(game) {
   if (!rows.length) return;
   const { error } = await db.from("aesfc_signups").insert(rows);
   if (error) throw error;
+}
+
+async function ensureGuaranteedSignupsForUpcomingGames() {
+  const games = (state.games?.length ? state.games : await loadUpcomingGames()).filter(isGameOpen);
+  for (const game of games) {
+    await ensureOrganizerSignups(game);
+  }
 }
 
 async function loadResults() {
@@ -774,7 +880,7 @@ function playerOfMonthRow(results = [], month = state.statsMonth) {
 }
 
 function monthResults(results = [], month = "") {
-  if (month === "all") return results.filter(shouldCountStatsResult);
+  if (month === "all") return results;
   return results.filter((result) => monthKey(result.game_date) === month);
 }
 
@@ -996,6 +1102,136 @@ function downloadMonthlySummary() {
   const filename = `aes-fc-${month === "all" ? "all-time" : month}-summary.csv`;
   downloadTextFile(filename, monthlySummaryCsv(month));
   setMessage(el("adminMessage"), "Monthly summary downloaded.");
+}
+
+function statExportRow(row) {
+  return {
+    player: row.name,
+    points: row.points,
+    appearances: row.appearances,
+    wins: row.wins,
+    draws: row.draws,
+    losses: row.losses,
+    goals: row.goals,
+    assists: row.assists,
+    goal_contributions: row.goalContributions,
+    goals_per_game: Number(formatRate(row.goalsPerGame)),
+    assists_per_game: Number(formatRate(row.assistsPerGame)),
+    win_percentage: Number((Number(row.winPct || 0) * 100).toFixed(1)),
+    form: row.form
+  };
+}
+
+function playerMatchExport(result, name, sideKey) {
+  const stats = resultStats(result, name);
+  return {
+    name: splitFullName(name).fullName,
+    goals: stats.goals,
+    assists: stats.assists,
+    points: calculateSingleGamePoints(result, name, sideKey)
+  };
+}
+
+function matchExportRow(result) {
+  const winner = resultWinner(result);
+  return {
+    id: result.id || "",
+    date: result.game_date,
+    score: {
+      team_a: Number(result.team_a_score || 0),
+      team_b: Number(result.team_b_score || 0)
+    },
+    winner,
+    team_a: (result.team_a_players || []).map((name) => playerMatchExport(result, name, "a")),
+    team_b: (result.team_b_players || []).map((name) => playerMatchExport(result, name, "b")),
+    flow: result.game_flow || [],
+    has_individual_stats: resultHasIndividualStats(result),
+    team_photos: {
+      team_a: result.team_a_photo_url || "",
+      team_b: result.team_b_photo_url || ""
+    },
+    created_at: result.created_at || ""
+  };
+}
+
+function profileExportRow(profile) {
+  const tags = profileTagsFor(profile);
+  return {
+    player: splitFullName(profile.full_name).fullName,
+    nationality: profile.nationality || "",
+    strengths: PLAYER_ATTRIBUTE_TAGS
+      .filter(([key]) => tags[key] === "strength")
+      .map(([, label]) => label),
+    weaknesses: PLAYER_ATTRIBUTE_TAGS
+      .filter(([key]) => tags[key] === "weakness")
+      .map(([, label]) => label),
+    attributes: Object.fromEntries(PLAYER_ATTRIBUTE_TAGS.map(([key, label]) => [label, tags[key] || "neutral"]))
+  };
+}
+
+function allDataExport() {
+  const results = [...(state.results.length ? state.results : fallbackResults)].sort((a, b) =>
+    new Date(a.game_date) - new Date(b.game_date) || new Date(a.created_at || 0) - new Date(b.created_at || 0)
+  );
+  const countableResults = results.filter(shouldCountStatsResult);
+  const months = availableResultMonths(results).reverse();
+  const allTimeStats = sortStatsRows(calculatePlayerStats(results), "overall");
+  return {
+    export_version: "1.0",
+    exported_at: new Date().toISOString(),
+    source: "AES FC signup site",
+    stats_rules: {
+      stats_start_date: STATS_START_DATE,
+      points: {
+        appearance: 1,
+        win: 1,
+        draw: 1,
+        goal: 1,
+        assist: 1
+      },
+      counted_games: "Games from the stats start date with goals/assists entered, plus 0-0 games."
+    },
+    matches: results.map(matchExportRow),
+    stats: {
+      all_time: {
+        summary: monthlySummaryData("all"),
+        players: allTimeStats.map(statExportRow)
+      },
+      by_month: months.map((month) => {
+        const monthStats = sortStatsRows(calculatePlayerStats(monthResults(results, month)), "overall");
+        return {
+          month,
+          label: monthLabel(month),
+          summary: monthlySummaryData(month),
+          players: monthStats.map(statExportRow)
+        };
+      })
+    },
+    player_profiles: adminProfileRows().map(profileExportRow),
+    regular_players: state.regulars.map((regular) => ({
+      player: regular.full_name,
+      nationality: regular.nationality || "",
+      guaranteed_signup: Boolean(regular.guaranteed_signup),
+      guaranteed_games: guaranteedGamesForRegular(regular),
+      active: regular.is_active !== false
+    })),
+    audit: {
+      total_match_results: results.length,
+      total_counted_stat_games: countableResults.length,
+      total_player_profiles: state.playerProfiles.length,
+      total_regular_players: state.regulars.length
+    }
+  };
+}
+
+function downloadAllDataExport() {
+  const today = zagrebParts().date;
+  downloadTextFile(
+    `aes-fc-data-export-${today}.json`,
+    JSON.stringify(allDataExport(), null, 2),
+    "application/json;charset=utf-8"
+  );
+  setMessage(el("adminMessage"), "All AES FC data exported.");
 }
 
 function renderPlayerStats(results) {
@@ -1503,7 +1739,7 @@ async function loadPublicState() {
     return;
   }
   state.game = await getCurrentGame();
-  await ensureOrganizerSignups(state.game);
+  await ensureGuaranteedSignupsForUpcomingGames();
   state.signups = await loadSignups(state.game.id);
   state.cancelledSignups = await loadCancelledSignups(state.game.id);
   state.photos = await loadPhotos();
@@ -1887,12 +2123,15 @@ async function loadAdmin() {
   assertAdmin();
   if (!state.game) state.game = await getCurrentGame();
   await loadUpcomingGames();
+  state.regulars = await loadRegulars();
+  await ensureGuaranteedSignupsForUpcomingGames();
+  state.game = state.games.find((game) => String(game.id) === String(state.game?.id) && isGameAvailable(game)) || state.publicGames[0] || state.games.find(isGameAvailable) || state.game;
+  state.signupCountsByGame = await loadSignupCountsForGames(state.games);
   renderAdminGame(state.game);
-  state.signups = await loadSignups(state.game.id);
-  state.cancelledSignups = await loadCancelledSignups(state.game.id);
+  state.signups = state.game?.id ? await loadSignups(state.game.id) : [];
+  state.cancelledSignups = state.game?.id ? await loadCancelledSignups(state.game.id) : [];
   state.photos = await loadPhotos();
   state.settings = await loadSettings();
-  state.regulars = await loadRegulars();
   state.playerProfiles = await loadPlayerProfiles();
   state.results = await loadResults();
   renderAdminSignups(state.signups);
@@ -1909,21 +2148,6 @@ async function loadAdmin() {
 }
 
 function renderAdminGame(game) {
-  if (!game) return;
-  const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
-  el("adminCurrentGame").textContent = `Editing signup for: ${fmtShortGame.format(gameStart)} · ${formatClock(game.start_time).replace(":00 ", "")}`;
-  const form = el("gameForm");
-  form.game_date.value = game.game_date || "";
-  form.start_time.value = String(game.start_time || "21:00").slice(0, 5);
-  form.end_time.value = String(game.end_time || "22:00").slice(0, 5);
-  form.signup_opens_at.value = toDatetimeLocalValue(game.signup_opens_at, game.game_date);
-  form.signup_open_now.checked = false;
-  form.guest_delay_24h.checked = Number(game.guest_delay_hours ?? 24) > 0;
-  form.is_recurring.checked = game.is_recurring !== false;
-  form.location_name.value = game.location_name || "NK Bili As ADB Pitch";
-  form.location_url.value = game.location_url || MAP_URL;
-  updateSignupOpenMode(form);
-
   const newForm = el("newGameForm");
   const defaultGame = getDefaultGameWindow();
   newForm.game_date.value = defaultGame.game_date;
@@ -1933,9 +2157,14 @@ function renderAdminGame(game) {
   newForm.signup_open_now.checked = false;
   newForm.guest_delay_24h.checked = true;
   newForm.is_recurring.checked = false;
-  newForm.location_name.value = game.location_name || defaultGame.location_name;
-  newForm.location_url.value = game.location_url || defaultGame.location_url;
+  newForm.location_name.value = game?.location_name || defaultGame.location_name;
+  newForm.location_url.value = game?.location_url || defaultGame.location_url;
   updateSignupOpenMode(newForm);
+  const nextGame = state.publicGames[0] || state.games.find(isGameAvailable) || game;
+  if (nextGame) {
+    const gameStart = new Date(zagrebDateTime(nextGame.game_date, String(nextGame.start_time || "21:00").slice(0, 5)));
+    el("adminCurrentGame").textContent = `Next active signup: ${fmtShortGame.format(gameStart)} · ${formatClock(nextGame.start_time).replace(":00 ", "")}`;
+  }
   renderAdminGamesList();
 }
 
@@ -1950,22 +2179,56 @@ function renderAdminGamesList() {
   const node = el("adminGamesList");
   if (!node) return;
   const games = state.games || [];
-  node.innerHTML = games.length ? games.map((game) => {
-    const start = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
-    const isCurrent = String(game.id) === String(state.game?.id);
-    return `
-      <div class="admin-game-row">
-        <div>
-          <strong>${escapeHtml(fmtShortGame.format(start))}, ${escapeHtml(formatClock(game.start_time).replace(":00 ", ""))}</strong>
-          <small>${escapeHtml(game.location_name || "AES FC")}${isCurrent ? " · Main signup game" : ""}</small>
-        </div>
-        <div class="admin-game-actions">
-          <button class="secondary compact" type="button" data-edit-game="${escapeHtml(game.id)}">Edit</button>
-          <button class="icon-button" type="button" data-remove-game="${escapeHtml(game.id)}">Remove</button>
-        </div>
+  if (!games.length) {
+    node.innerHTML = "<p>No upcoming games found.</p>";
+    return;
+  }
+  const visibleGames = state.showAllAdminGames ? games : games.filter((game) => {
+    const weekStart = addDays(game.game_date, -(isoDowFromDate(game.game_date) - 1));
+    const currentWeek = addDays(zagrebParts().date, -(zagrebParts().isoDow - 1));
+    return new Date(`${weekStart}T12:00:00Z`) < new Date(`${addDays(currentWeek, 21)}T12:00:00Z`);
+  });
+  const grouped = new Map();
+  visibleGames.forEach((game) => {
+    const weekStart = addDays(game.game_date, -(isoDowFromDate(game.game_date) - 1));
+    if (!grouped.has(weekStart)) grouped.set(weekStart, []);
+    grouped.get(weekStart).push(game);
+  });
+  node.innerHTML = `
+    <div class="admin-schedule-toolbar">
+      <p>Saturday 09:00 Europe/Zagreb opens the following Monday, Wednesday and Friday together.</p>
+      <button class="secondary compact" type="button" data-save-schedule disabled>Save schedule changes</button>
+    </div>
+    ${[...grouped.entries()].map(([weekStart, weekGames]) => `
+      <section class="admin-week-group">
+        <h4>Week of ${escapeHtml(formatShortResultDate(weekStart))}</h4>
+        ${weekGames.map((game) => renderAdminGameRow(game)).join("")}
+      </section>
+    `).join("")}
+    ${(state.games.length > visibleGames.length) ? `<button class="secondary compact" type="button" data-show-more-games>Show more</button>` : ""}
+  `;
+  state.scheduleDirty = false;
+}
+
+function renderAdminGameRow(game) {
+  const count = state.signupCountsByGame?.[game.id] || 0;
+  const isActive = isGameAvailable(game);
+  const status = game.game_status === "removed" ? "Removed" : isActive ? "Active" : "Inactive";
+  return `
+    <div class="admin-game-row ${isActive ? "" : "inactive"}" data-game-row="${escapeHtml(game.id)}">
+      <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${isActive ? "checked" : ""}> Active</label>
+      <label>Date<input name="schedule_date" type="date" value="${escapeHtml(game.game_date)}"></label>
+      <label>Start<input name="schedule_start" type="time" value="${escapeHtml(String(game.start_time || "21:00").slice(0, 5))}"></label>
+      <label>End<input name="schedule_end" type="time" value="${escapeHtml(String(game.end_time || "22:00").slice(0, 5))}"></label>
+      <label>Venue<input name="schedule_location_name" value="${escapeHtml(game.location_name || "")}"></label>
+      <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(game.location_url || "")}"></label>
+      <div class="schedule-row-meta">
+        <strong>${escapeHtml(status)}</strong>
+        <small>${escapeHtml(count ? `${count} signup(s). Deactivating keeps them hidden from public signup until reactivated.` : "No signups yet.")}</small>
       </div>
-    `;
-  }).join("") : "<p>No upcoming games found.</p>";
+      <button class="icon-button" type="button" data-remove-game="${escapeHtml(game.id)}">Remove</button>
+    </div>
+  `;
 }
 
 function applyDefaultSignupOpen(form) {
@@ -2203,15 +2466,142 @@ function renderAdminCancellations(signups) {
 }
 
 function renderAdminRegulars() {
-  el("adminRegulars").innerHTML = state.regulars.map((regular) => `
+  const counts = guaranteedCountsByDay(false);
+  const warnings = WEEKLY_GAME_DAYS
+    .filter(([key]) => counts[key] > 12)
+    .map(([key, label]) => `${label} has ${counts[key] || 0} guaranteed players; players over 12 will become subs.`);
+  el("adminRegulars").innerHTML = `
+    <p class="admin-helper">Guaranteed spots apply to the upcoming weekly signup release: Monday, Wednesday and Friday games opened Saturday at 09:00.</p>
+    <div class="guarantee-summary">
+      ${WEEKLY_GAME_DAYS.map(([key, label]) => `
+        <span>${escapeHtml(label)}: <strong>${counts[key] || 0}/12</strong></span>
+      `).join("")}
+    </div>
+    ${warnings.length ? `<p class="admin-warning">${escapeHtml(warnings.join(" "))}</p>` : ""}
+    ${state.regulars.map((regular) => {
+      const guaranteedGames = guaranteedGamesForRegular(regular);
+      return `
     <div class="admin-regular" data-regular-row="${regular.id}">
       <input name="regular_full_name" value="${escapeHtml(regular.full_name)}" aria-label="Regular player full name">
       <input name="regular_nationality" value="${escapeHtml(regular.nationality || "")}" placeholder="Nationality" aria-label="Regular player nationality">
-      <label class="toggle-row"><input name="regular_guaranteed" type="checkbox" ${regular.guaranteed_signup ? "checked" : ""}> Guaranteed</label>
-      <button class="secondary compact" type="button" data-save-regular="${regular.id}">Save</button>
+      <fieldset class="guarantee-controls" aria-label="Guaranteed games for ${escapeHtml(regular.full_name)}">
+        <legend>Guaranteed: ${escapeHtml(guaranteedGamesLabel(regular))}</legend>
+        <label><input name="regular_guaranteed_all" type="checkbox" ${guaranteedGames.length === WEEKLY_GAME_DAYS.length ? "checked" : ""}> All</label>
+        ${WEEKLY_GAME_DAYS.map(([key, label]) => `
+          <label><input name="regular_guaranteed_game" type="checkbox" value="${escapeHtml(key)}" ${guaranteedGames.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>
+        `).join("")}
+      </fieldset>
       <button class="icon-button" type="button" data-remove-regular="${regular.id}">Remove</button>
     </div>
-  `).join("") || "<p>No regular names yet.</p>";
+  `; }).join("") || "<p>No regular names yet.</p>"}
+    <div class="batch-actions">
+      <button class="secondary" type="button" data-save-regulars disabled>Save changes</button>
+      <span id="regularsDirtyNote" class="dirty-note">No unsaved changes</span>
+    </div>
+  `;
+  state.regularsDirty = false;
+}
+
+function markRegularsDirty() {
+  state.regularsDirty = true;
+  const counts = guaranteedCountsByDay(true);
+  el("adminRegulars")?.querySelector(".guarantee-summary")?.replaceChildren();
+  const summary = el("adminRegulars")?.querySelector(".guarantee-summary");
+  if (summary) {
+    summary.innerHTML = WEEKLY_GAME_DAYS.map(([key, label]) => `
+      <span>${escapeHtml(label)}: <strong>${counts[key] || 0}/12</strong></span>
+    `).join("");
+  }
+  const save = document.querySelector("[data-save-regulars]");
+  if (save) save.disabled = false;
+  const note = el("regularsDirtyNote");
+  if (note) note.textContent = "Unsaved changes";
+}
+
+async function saveRegularsBatch() {
+  assertAdmin();
+  const rows = [...document.querySelectorAll("#adminRegulars [data-regular-row]")];
+  const failures = [];
+  for (const row of rows) {
+    const id = row.dataset.regularRow;
+    const fullName = splitFullName(row.querySelector("[name='regular_full_name']").value).fullName;
+    const nationality = row.querySelector("[name='regular_nationality']")?.value.trim() || "";
+    const guaranteedGames = selectedGuaranteedGames(row);
+    if (!fullName) {
+      failures.push("A row has no player name.");
+      continue;
+    }
+    const { error } = await db.from("aesfc_regulars").update({
+      full_name: fullName,
+      nationality,
+      guaranteed_signup: guaranteedGames.length > 0,
+      guaranteed_games: guaranteedGames
+    }).eq("id", id);
+    if (error) {
+      failures.push(`${fullName}: ${error.message}`);
+      continue;
+    }
+    await upsertPlayerProfile(fullName, nationality);
+  }
+  if (failures.length) throw new Error(`Some regulars were not saved: ${failures.join(" | ")}`);
+  state.regulars = await loadRegulars();
+  renderAdminRegulars();
+  renderPlayerSelectors();
+  setMessage(el("adminMessage"), "Regular player changes saved.");
+}
+
+function markScheduleDirty() {
+  state.scheduleDirty = true;
+  const save = document.querySelector("[data-save-schedule]");
+  if (save) save.disabled = false;
+}
+
+async function saveScheduleBatch() {
+  assertAdmin();
+  const rows = [...document.querySelectorAll("#adminGamesList [data-game-row]")];
+  const failures = [];
+  const impacted = rows
+    .map((row) => {
+      const id = row.dataset.gameRow;
+      const game = (state.games || []).find((item) => String(item.id) === String(id));
+      const count = state.signupCountsByGame?.[id] || 0;
+      const active = row.querySelector("[name='schedule_active']")?.checked || false;
+      return { row, game, count, active };
+    })
+    .filter(({ game, count, active }) => game && count > 0 && isGameAvailable(game) && !active);
+  if (impacted.length) {
+    const lines = impacted.map(({ game, count }) => {
+      const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
+      return `${fmtShortGame.format(gameStart)}: ${count} signup(s)`;
+    });
+    if (!doubleConfirm(`Deactivate games with existing signups?\n\n${lines.join("\n")}\n\nThe registrations will be preserved, but hidden from public signup while inactive.`)) return;
+  }
+  for (const row of rows) {
+    const id = row.dataset.gameRow;
+    const gameDate = row.querySelector("[name='schedule_date']").value;
+    const active = row.querySelector("[name='schedule_active']")?.checked || false;
+    const payload = {
+      game_date: gameDate,
+      start_time: row.querySelector("[name='schedule_start']").value,
+      end_time: row.querySelector("[name='schedule_end']").value,
+      location_name: row.querySelector("[name='schedule_location_name']").value,
+      location_url: row.querySelector("[name='schedule_location_url']").value,
+      signup_opens_at: signupOpenForGame(gameDate),
+      is_active: active,
+      game_status: active ? "active" : "skipped",
+      is_recurring: true
+    };
+    const { error } = await db.from("aesfc_games").update(payload).eq("id", id);
+    if (error) failures.push(`${gameDate}: ${error.message}`);
+  }
+  if (failures.length) throw new Error(`Some schedule rows were not saved: ${failures.join(" | ")}`);
+  await loadUpcomingGames();
+  state.signupCountsByGame = await loadSignupCountsForGames(state.games);
+  state.game = state.publicGames[0] || state.games.find(isGameAvailable) || state.game;
+  renderAdminGame(state.game);
+  renderGameSelector();
+  renderSheetStatus();
+  setMessage(el("adminMessage"), "Schedule changes saved.");
 }
 
 function profileTagsFor(profile = {}) {
@@ -2416,6 +2806,8 @@ async function saveGameDetails(event) {
       location_url: data.get("location_url"),
       signup_opens_at: openNow ? new Date().toISOString() : datetimeLocalToZagreb(data.get("signup_opens_at")) || signupOpenForGame(gameDate),
       is_recurring: data.get("is_recurring") === "on",
+      is_active: true,
+      game_status: "active",
       guest_delay_hours: data.get("guest_delay_24h") === "on" ? 24 : 0
     };
     const { data: saved, error } = await db
@@ -2480,12 +2872,18 @@ async function removeGame(gameId) {
   if (countError) throw countError;
   const label = `${fmtDate.format(new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5))))} at ${formatClock(game.start_time)}`;
   const warning = count
-    ? `Remove ${label}?\n\nThis game has ${count} signup(s). Removing it will also remove those signup records.`
-    : `Remove ${label}?`;
+    ? `Remove ${label}?\n\nThis game has ${count} signup(s). It will be hidden from public signup and automatic guarantees, but the signup records will be preserved.`
+    : `Remove ${label}?\n\nThis will hide the fixture from public signup and automatic guarantees.`;
   if (!doubleConfirm(warning)) return;
-  const { error } = await db.from("aesfc_games").delete().eq("id", gameId);
+  const { error } = await db
+    .from("aesfc_games")
+    .update({
+      is_active: false,
+      game_status: "removed"
+    })
+    .eq("id", gameId);
   if (error) throw error;
-  setMessage(el("adminMessage"), "Game removed.");
+  setMessage(el("adminMessage"), "Game removed from public signup. Existing signup data was preserved.");
 }
 
 async function selectAdminGame(gameId) {
@@ -3596,7 +3994,6 @@ async function handleAdminClicks(event) {
   const signupId = event.target.dataset.removeSignup;
   const saveSignupId = event.target.dataset.saveSignup;
   const photoId = event.target.dataset.removePhoto;
-  const saveRegularId = event.target.dataset.saveRegular;
   const removeRegularId = event.target.dataset.removeRegular;
   const saveProfileKey = event.target.hasAttribute("data-save-profile-key") ? event.target.dataset.saveProfileKey : null;
   const removeProfileId = event.target.dataset.removeProfile;
@@ -3607,8 +4004,25 @@ async function handleAdminClicks(event) {
   const graphicResultId = event.target.dataset.graphicResult;
   const playerMonthGraphic = event.target.hasAttribute("data-admin-player-month-graphic");
   const downloadMonthly = event.target.hasAttribute("data-download-monthly-summary");
+  const downloadAllData = event.target.hasAttribute("data-download-all-data");
+  const saveRegulars = event.target.hasAttribute("data-save-regulars");
+  const saveSchedule = event.target.hasAttribute("data-save-schedule");
+  const showMoreGames = event.target.hasAttribute("data-show-more-games");
   try {
     assertAdmin();
+    if (showMoreGames) {
+      state.showAllAdminGames = true;
+      renderAdminGamesList();
+      return;
+    }
+    if (saveRegulars) {
+      await saveRegularsBatch();
+      return;
+    }
+    if (saveSchedule) {
+      await saveScheduleBatch();
+      return;
+    }
     if (graphicResultId) {
       await createMatchGraphic(graphicResultId);
     }
@@ -3617,6 +4031,9 @@ async function handleAdminClicks(event) {
     }
     if (downloadMonthly) {
       downloadMonthlySummary();
+    }
+    if (downloadAllData) {
+      downloadAllDataExport();
     }
     if (editGameId) {
       await selectAdminGame(editGameId);
@@ -3650,20 +4067,6 @@ async function handleAdminClicks(event) {
       const { error } = await db.from("aesfc_photos").update({ is_active: false }).eq("id", photoId);
       if (error) throw error;
       setMessage(el("adminMessage"), "Photo removed.");
-    }
-    if (saveRegularId) {
-      const row = event.target.closest("[data-regular-row]");
-      const fullName = splitFullName(row.querySelector("[name='regular_full_name']").value).fullName;
-      const nationality = row.querySelector("[name='regular_nationality']")?.value.trim() || "";
-      if (!fullName) throw new Error("Please enter a player name.");
-      const { error } = await db.from("aesfc_regulars").update({
-        full_name: fullName,
-        nationality,
-        guaranteed_signup: row.querySelector("[name='regular_guaranteed']")?.checked || false
-      }).eq("id", saveRegularId);
-      if (error) throw error;
-      await upsertPlayerProfile(fullName, nationality);
-      setMessage(el("adminMessage"), "Regular player updated.");
     }
     if (saveProfileKey !== null) {
       const row = event.target.closest("[data-profile-row]");
@@ -3704,7 +4107,7 @@ async function handleAdminClicks(event) {
     if (removeGameId) {
       await removeGame(removeGameId);
     }
-    if (signupId || saveSignupId || photoId || saveRegularId || removeRegularId || saveProfileKey !== null || removeProfileId || removeResultId || removeGameId || saveResultId) {
+    if (signupId || saveSignupId || photoId || removeRegularId || saveProfileKey !== null || removeProfileId || removeResultId || removeGameId || saveResultId) {
       await loadPublicState();
       await loadAdmin();
     }
@@ -3753,9 +4156,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (event.target.id === "lightbox") el("lightbox").classList.add("hidden");
   });
   el("adminLogin").addEventListener("submit", adminLogin);
-  el("gameForm").addEventListener("submit", saveGameDetails);
-  el("gameForm").game_date.addEventListener("change", (event) => applyDefaultSignupOpen(event.currentTarget.form));
-  el("gameForm").signup_open_now.addEventListener("change", (event) => updateSignupOpenMode(event.currentTarget.form));
   el("newGameForm").game_date.addEventListener("change", (event) => applyDefaultSignupOpen(event.currentTarget.form));
   el("newGameForm").signup_open_now.addEventListener("change", (event) => updateSignupOpenMode(event.currentTarget.form));
   el("newGameForm").addEventListener("submit", addGame);
@@ -3768,6 +4168,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("regularForm").addEventListener("submit", addRegular);
   el("profileForm").addEventListener("submit", addProfile);
   el("adminTools").addEventListener("click", handleAdminClicks);
+  el("adminRegulars").addEventListener("input", markRegularsDirty);
+  el("adminRegulars").addEventListener("change", (event) => {
+    const row = event.target.closest("[data-regular-row]");
+    if (row && event.target.name === "regular_guaranteed_all") {
+      row.querySelectorAll("[name='regular_guaranteed_game']").forEach((checkbox) => {
+        checkbox.checked = event.target.checked;
+      });
+    }
+    if (row && event.target.name === "regular_guaranteed_game") {
+      const dayChecks = [...row.querySelectorAll("[name='regular_guaranteed_game']")];
+      const all = row.querySelector("[name='regular_guaranteed_all']");
+      if (all) all.checked = dayChecks.length > 0 && dayChecks.every((checkbox) => checkbox.checked);
+    }
+    markRegularsDirty();
+  });
+  el("adminGamesList").addEventListener("input", markScheduleDirty);
+  el("adminGamesList").addEventListener("change", markScheduleDirty);
+  window.addEventListener("beforeunload", (event) => {
+    if (!state.regularsDirty && !state.scheduleDirty) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
   el("adminResults").addEventListener("change", (event) => {
     if (event.target.matches("[data-saved-result-player-select]")) updateSavedResultManualVisibility();
   });

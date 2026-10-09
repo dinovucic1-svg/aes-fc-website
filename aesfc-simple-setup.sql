@@ -7,6 +7,8 @@ create table if not exists public.aesfc_games (
   location_url text not null default 'https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8',
   signup_opens_at timestamptz not null,
   is_recurring boolean not null default true,
+  is_active boolean not null default true,
+  game_status text not null default 'active',
   guest_delay_hours int not null default 24,
   created_at timestamptz not null default now()
 );
@@ -55,6 +57,7 @@ create table if not exists public.aesfc_regulars (
   nationality text not null default '',
   is_active boolean not null default true,
   guaranteed_signup boolean not null default false,
+  guaranteed_games text[] not null default '{}'::text[],
   sort_order int not null default 100,
   created_at timestamptz not null default now()
 );
@@ -96,7 +99,14 @@ alter table public.aesfc_signups add column if not exists signed_up_by text;
 alter table public.aesfc_signups add column if not exists nationality text not null default '';
 alter table public.aesfc_regulars add column if not exists nationality text not null default '';
 alter table public.aesfc_regulars add column if not exists guaranteed_signup boolean not null default false;
+alter table public.aesfc_regulars add column if not exists guaranteed_games text[] not null default '{}'::text[];
+update public.aesfc_regulars
+set guaranteed_games = array['monday', 'wednesday']
+where guaranteed_signup = true
+  and coalesce(array_length(guaranteed_games, 1), 0) = 0;
 alter table public.aesfc_games add column if not exists is_recurring boolean not null default true;
+alter table public.aesfc_games add column if not exists is_active boolean not null default true;
+alter table public.aesfc_games add column if not exists game_status text not null default 'active';
 alter table public.aesfc_games add column if not exists guest_delay_hours int not null default 24;
 alter table public.aesfc_results add column if not exists player_stats jsonb not null default '{}'::jsonb;
 alter table public.aesfc_results add column if not exists game_flow text not null default '';
@@ -186,7 +196,7 @@ values (
   'Signup rules',
   'Only Dino, Igor, Michael and Miro can share the signup sheet link. If you have access to the signup link, please keep it private. This helps us know who has access, keep contact details available, and manage updates properly.
 
-For Wednesday 9 PM games, the signup sheet goes live every Saturday morning.
+Signups go live every Saturday at 9:00 AM Europe/Zagreb for the following week’s Monday, Wednesday and Friday games.
 
 Please give regulars from our WhatsApp group the first chance to sign up in the first 24 hours of the signup sheet being posted. After the 24 hours, you have the green light for people to sign up additional players.
 

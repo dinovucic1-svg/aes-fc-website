@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20260930c">
+    <link rel="stylesheet" href="styles.css?v=20261009a">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -235,6 +235,7 @@
                       <select id="adminMonthlySummarySelect"></select>
                     </label>
                     <button class="secondary" type="button" data-download-monthly-summary>Download CSV</button>
+                    <button class="secondary" type="button" data-download-all-data>Export all data</button>
                   </div>
                   <div id="adminMonthlySummary" class="monthly-summary"></div>
                 </div>
@@ -250,22 +251,7 @@
               <details class="admin-drawer">
                 <summary>Edit match dates</summary>
                 <details class="admin-subdrawer">
-                  <summary>Edit match details</summary>
-                  <form id="gameForm" class="game-form">
-                    <label>Game date<input name="game_date" type="date" required></label>
-                    <label>Start time<input name="start_time" type="time" required></label>
-                    <label>End time<input name="end_time" type="time" required></label>
-                    <label>Signup opens<input name="signup_opens_at" type="datetime-local" required></label>
-                    <label class="toggle-row"><input name="signup_open_now" type="checkbox"> Open signup immediately when saved</label>
-                    <label class="toggle-row"><input name="guest_delay_24h" type="checkbox"> Guests wait 24 hours before they can sign up</label>
-                    <label class="toggle-row"><input name="is_recurring" type="checkbox"> Recurring every week</label>
-                    <label>Location name<input name="location_name" required></label>
-                    <label>Location link<input name="location_url" type="url" required></label>
-                    <button class="secondary" type="submit">Save game details</button>
-                  </form>
-                </details>
-                <details class="admin-subdrawer">
-                  <summary>Add another match</summary>
+                  <summary>Add match</summary>
                   <form id="newGameForm" class="game-form">
                     <label>Game date<input name="game_date" type="date" required></label>
                     <label>Start time<input name="start_time" type="time" value="21:00" required></label>
@@ -279,7 +265,7 @@
                     <button class="secondary" type="submit">Add game</button>
                   </form>
                 </details>
-                <div class="admin-subtitle">Upcoming games</div>
+                <div class="admin-subtitle">Upcoming schedule</div>
                 <div id="adminGamesList" class="admin-games-list"></div>
               </details>
               <details class="admin-drawer">
@@ -388,7 +374,7 @@
       </div>
     </div>
 
-    <script src="config.js?v=20260930c"></script>
-    <script src="app.js?v=20260930c"></script>
+    <script src="config.js?v=20261009a"></script>
+    <script src="app.js?v=20261009a"></script>
   </body>
 </html>
