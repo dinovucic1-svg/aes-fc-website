@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261010c">
+    <link rel="stylesheet" href="styles.css?v=20261010d">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -21,7 +21,6 @@
       <nav aria-label="Main navigation">
         <a href="#signupForm">Signup</a>
         <a href="#results">Results</a>
-        <a href="#media">Media</a>
         <a href="#adminView">Admin</a>
       </nav>
     </header>
@@ -95,7 +94,7 @@
               <label id="responsibleManualWrap" class="hidden">Your full name<input name="responsible_player_manual" placeholder="First and last name"></label>
             </div>
             <p id="signupPriorityNote" class="form-note"></p>
-            <button class="primary" type="submit">Sign up</button>
+            <button id="signupSubmitButton" class="primary" type="submit">Sign up</button>
             <p id="signupMessage" class="form-message" role="status"></p>
             <div id="calendarActions" class="calendar-actions hidden"></div>
           </form>
@@ -164,9 +163,12 @@
       </section>
 
       <section id="media" class="gallery-section">
-        <div class="section-head">
-          <p class="eyebrow">Our people</p>
-          <h2>Photos</h2>
+        <div class="section-head gallery-title-row">
+          <div>
+            <p class="eyebrow">Our people</p>
+            <h2>Photos</h2>
+          </div>
+          <a class="section-social-link" href="https://www.instagram.com/aesfootballsplit/" target="_blank" rel="noreferrer">Instagram ↗</a>
         </div>
         <div class="photo-carousel" aria-label="AES FC photo gallery">
           <button id="photoPrev" class="photo-nav" type="button" aria-label="Previous photo">‹</button>
@@ -394,7 +396,7 @@
 
     <footer class="site-footer">
       <span>AES FC · Split · Since 2015.</span>
-      <span id="footerLinks" class="footer-links"></span>
+      <span id="footerLinks" class="footer-links"><a href="https://www.instagram.com/aesfootballsplit/" target="_blank" rel="noreferrer">Instagram ↗</a></span>
     </footer>
 
     <div id="lightbox" class="lightbox hidden" role="dialog" aria-modal="true" aria-label="Photo preview">
@@ -461,6 +463,6 @@
     </div>
 
     <script src="config.js?v=20261009b"></script>
-    <script src="app.js?v=20261010c"></script>
+    <script src="app.js?v=20261010d"></script>
   </body>
 </html>

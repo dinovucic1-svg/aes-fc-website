@@ -547,12 +547,43 @@ function activateDemoMode() {
 function fixtureStatus(game) {
   if (!isGameAvailable(game)) return "Cancelled";
   const count = state.signupCountsByGame?.[game.id] ?? demoSignupRows(game.id).length;
-  if (!isGameOpen(game)) {
+  const capacity = Number(game.capacity || 12);
+  if (game.is_open === false || !isGameOpen(game)) {
     const opens = new Date(game.signup_opens_at || signupOpenForGame(game.game_date));
     return `Signup opens ${fmtFixtureOpen.format(opens).replace(",", "")}`;
   }
-  if (count >= 12) return "Full · Join waiting list";
-  return `${12 - count} spot${12 - count === 1 ? "" : "s"} left`;
+  if (count >= capacity) return "Full · Waiting list available";
+  const spotsLeft = Math.max(0, capacity - count);
+  return `${spotsLeft} spot${spotsLeft === 1 ? "" : "s"} left`;
+}
+
+function selectedGameAvailability(game = state.game, signups = state.signups) {
+  const playingCount = signups.filter((signup) => signup.status === "Playing").length;
+  const capacity = Number(game?.capacity || 12);
+  const spotsLeft = Math.max(0, capacity - playingCount);
+  const isOpen = Boolean(game && game.is_open !== false && isGameOpen(game));
+  return {
+    playingCount,
+    capacity,
+    spotsLeft,
+    isOpen,
+    canJoinWaitlist: isOpen && spotsLeft <= 0
+  };
+}
+
+function selectedGameAvailabilityLabel(game = state.game, signups = state.signups) {
+  const { spotsLeft, isOpen, canJoinWaitlist } = selectedGameAvailability(game, signups);
+  if (!game) return "";
+  if (!isGameAvailable(game)) return "cancelled";
+  if (!isOpen) return "signup closed";
+  if (canJoinWaitlist) return "Full · Waiting list available";
+  return `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left`;
+}
+
+function selectedGameActionLabel(game = state.game, signups = state.signups) {
+  const availability = selectedGameAvailability(game, signups);
+  if (!game || !isGameAvailable(game) || !availability.isOpen) return "Signup closed";
+  return availability.canJoinWaitlist ? "Join waiting list" : "Sign up";
 }
 
 function splitFullName(fullName) {
@@ -1944,13 +1975,11 @@ function renderSheetStatus() {
     return;
   }
   const gameStart = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
-  const playingCount = state.signups.filter((signup) => signup.status === "Playing").length;
-  const capacity = Number(game.capacity || 12);
-  const spotsLeft = Math.max(0, capacity - playingCount);
   const selectedTitle = `${gameStart.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Zagreb" }).replace(",", "")} · ${formatPublicClock(game.start_time)}`;
-  const selectedSummary = `${game.location_name || "AES FC"} · ${game.is_open ? `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : "signup closed"}`;
+  const selectedSummary = `${game.location_name || "AES FC"} · ${selectedGameAvailabilityLabel(game)}`;
   setText("selectedGameTitle", selectedTitle);
   setText("selectedGameSummary", selectedSummary);
+  setText("signupSubmitButton", selectedGameActionLabel(game));
   setText("listGameSummary", `${fmtShortGame.format(gameStart)}, ${formatPublicClock(game.start_time)}`);
   const visibleGames = state.publicGames?.length ? state.publicGames : state.games || [];
   const openCount = visibleGames.filter(isGameOpen).length;
@@ -2143,7 +2172,7 @@ async function loadPublicState() {
 async function selectPublicGame(gameId) {
   const selected = (state.publicGames?.length ? state.publicGames : state.games || []).find((game) => game.id === gameId);
   if (!selected) return;
-  state.game = { ...selected, is_open: isGameOpen(selected) };
+  state.game = { ...selected, is_open: selected.is_open !== false && isGameOpen(selected) };
   if (DEMO_MODE) {
     state.signups = demoSignupRows(state.game.id);
     state.cancelledSignups = [];
