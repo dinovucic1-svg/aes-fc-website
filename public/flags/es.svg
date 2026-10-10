@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2" role="img" aria-label="Spain flag">
+  <rect width="3" height="2" fill="#c60b1e"/>
+  <rect width="3" height="1" y=".5" fill="#ffc400"/>
+  <g transform="translate(.72 1) scale(.16)">
+    <rect x="-1.4" y="-2.2" width="1.8" height="3.1" fill="#c60b1e"/>
+    <rect x="-.95" y="-1.75" width=".9" height="2.2" fill="#f6d04d"/>
+    <path d="M-1.55-2.45h2.1v.38h-2.1z" fill="#9b1b30"/>
+    <path d="M-.55-2.72l.28.38h-.56z" fill="#9b1b30"/>
+  </g>
+</svg>

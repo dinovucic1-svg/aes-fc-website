@@ -7949,3 +7949,116 @@ main {
     font-size: .88rem;
   }
 }
+
+/* Focused production polish: cancellation, compact result names, clean gallery controls. */
+.cancel-form .cancel-submit {
+  width: auto;
+  min-height: 48px;
+  padding: 10px 22px;
+  background: var(--red) !important;
+  border: 2px solid var(--navy);
+  color: var(--paper) !important;
+  opacity: 1;
+}
+
+.cancel-form .cancel-submit:disabled {
+  background: #d8c6a7 !important;
+  border-color: rgba(13, 44, 73, .55);
+  color: #6f604d !important;
+  cursor: not-allowed;
+}
+
+.cancel-form .cancel-submit:not(:disabled):hover,
+.cancel-form .cancel-submit:not(:disabled):focus-visible {
+  background: #b9292d !important;
+  color: var(--paper) !important;
+}
+
+.result-team-compact li {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.result-team-compact li span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  font-size: .88rem;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.result-stat-icons {
+  min-width: 3.7rem;
+  text-align: right;
+  white-space: nowrap;
+  font-size: .78rem;
+  font-weight: 650;
+}
+
+.photo-carousel .photo-controls {
+  position: static !important;
+  display: none;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  color: var(--muted);
+}
+
+.photo-carousel.has-multiple .photo-controls {
+  display: flex;
+}
+
+.photo-carousel .photo-controls button,
+.photo-carousel .photo-controls p,
+.photo-carousel .photo-counter {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 500;
+}
+
+.photo-carousel .photo-controls button {
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.photo-carousel .photo-controls p {
+  display: none !important;
+}
+
+@media (max-width: 520px) {
+  .match-graphic-card {
+    padding-inline: 14px;
+  }
+
+  .result-team-compact:first-child {
+    padding-right: 8px;
+  }
+
+  .result-team-compact + .result-team-compact {
+    padding-left: 8px;
+  }
+
+  .result-team-compact li {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: 5px;
+  }
+
+  .result-team-compact li span:first-child {
+    font-size: .8rem;
+    font-weight: 560;
+  }
+
+  .result-stat-icons {
+    min-width: 3rem;
+    font-size: .7rem;
+  }
+}

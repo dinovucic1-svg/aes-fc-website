@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261010j">
+    <link rel="stylesheet" href="styles.css?v=20261010k">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -106,7 +106,7 @@
                   <select name="cancel_signup_id" id="cancelSignupSelect" required></select>
                 </label>
               </div>
-              <button class="secondary" type="submit">Cancel my signup</button>
+              <button id="cancelSignupButton" class="secondary cancel-submit" type="submit" disabled>Cancel my signup</button>
               <p id="cancelSignupMessage" class="form-message" role="status"></p>
             </form>
           </details>
@@ -173,9 +173,10 @@
           <button id="photoPrev" class="photo-nav" type="button" aria-label="Previous photo">‹</button>
           <div id="photoGrid" class="photo-track"></div>
           <button id="photoNext" class="photo-nav" type="button" aria-label="Next photo">›</button>
-          <div class="photo-controls">
-            <button id="photoPause" type="button" aria-pressed="false">Pause</button>
-            <p id="photoCaption"></p>
+          <div class="photo-controls" aria-label="Gallery slideshow controls">
+            <button id="photoPause" type="button" aria-pressed="false">Pause slideshow</button>
+            <span id="photoCounter" class="photo-counter" aria-live="polite"></span>
+            <p id="photoCaption" class="sr-only"></p>
           </div>
         </div>
       </section>

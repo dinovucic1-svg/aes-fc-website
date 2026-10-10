@@ -68,15 +68,48 @@ const PERMANENT_RECURRING_SLOTS = [
   }
 ];
 const NATIONALITY_FLAGS = {
+  ar: { code: "ar", label: "Argentina" },
   argentina: { code: "ar", label: "Argentina" },
+  au: { code: "au", label: "Australia" },
   australia: { code: "au", label: "Australia" },
+  hr: { code: "hr", label: "Croatia" },
   croatia: { code: "hr", label: "Croatia" },
-  england: { code: "gb", label: "United Kingdom" },
+  hrvatska: { code: "hr", label: "Croatia" },
+  de: { code: "de", label: "Germany" },
+  germany: { code: "de", label: "Germany" },
+  german: { code: "de", label: "Germany" },
+  deutschland: { code: "de", label: "Germany" },
+  es: { code: "es", label: "Spain" },
+  spain: { code: "es", label: "Spain" },
+  spanish: { code: "es", label: "Spain" },
+  fr: { code: "fr", label: "France" },
   france: { code: "fr", label: "France" },
-  ukraine: { code: "ua", label: "Ukraine" },
+  french: { code: "fr", label: "France" },
+  gb: { code: "gb", label: "United Kingdom" },
+  england: { code: "gb", label: "United Kingdom" },
+  english: { code: "gb", label: "United Kingdom" },
   uk: { code: "gb", label: "United Kingdom" },
   "great britain": { code: "gb", label: "United Kingdom" },
-  "united kingdom": { code: "gb", label: "United Kingdom" }
+  britain: { code: "gb", label: "United Kingdom" },
+  british: { code: "gb", label: "United Kingdom" },
+  "united kingdom": { code: "gb", label: "United Kingdom" },
+  it: { code: "it", label: "Italy" },
+  italy: { code: "it", label: "Italy" },
+  italian: { code: "it", label: "Italy" },
+  ro: { code: "ro", label: "Romania" },
+  romania: { code: "ro", label: "Romania" },
+  romanian: { code: "ro", label: "Romania" },
+  ua: { code: "ua", label: "Ukraine" },
+  ukraine: { code: "ua", label: "Ukraine" },
+  ukrainian: { code: "ua", label: "Ukraine" },
+  us: { code: "us", label: "United States" },
+  usa: { code: "us", label: "United States" },
+  "u.s.": { code: "us", label: "United States" },
+  "u.s.a.": { code: "us", label: "United States" },
+  america: { code: "us", label: "United States" },
+  american: { code: "us", label: "United States" },
+  "united states": { code: "us", label: "United States" },
+  "united states of america": { code: "us", label: "United States" }
 };
 const DEFAULT_RULES_TITLE = "Signup rules";
 const DEFAULT_RULES_TEXT = `Only Dino, Igor, Michael and Miro can share the signup sheet link. If you have access to the signup link, please keep it private. This helps us know who has access, keep contact details available, and manage updates properly.
@@ -613,40 +646,82 @@ function signupFullName(signup) {
 }
 
 function normalizeName(value) {
-  return splitFullName(value).fullName.toLocaleLowerCase();
+  return normalizeLookupKey(splitFullName(value).fullName);
+}
+
+function normalizeLookupKey(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’'`´.-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase();
+}
+
+function normalizeCountryKey(value = "") {
+  return normalizeLookupKey(value)
+    .replace(/\b(flag|nationality|country|republic of)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function nationalityFlag(nationality = "") {
-  const flag = NATIONALITY_FLAGS[String(nationality || "").trim().toLocaleLowerCase()];
+  const flag = NATIONALITY_FLAGS[normalizeCountryKey(nationality)];
   return flag ? `public/flags/${flag.code}.svg` : "";
 }
 
 function nationalityFlagLabel(nationality = "") {
-  return NATIONALITY_FLAGS[String(nationality || "").trim().toLocaleLowerCase()]?.label || String(nationality || "").trim();
+  return NATIONALITY_FLAGS[normalizeCountryKey(nationality)]?.label || String(nationality || "").trim();
 }
 
-function regularForName(fullName = "") {
-  const clean = normalizeName(fullName);
+function regularForPlayer(player = {}) {
+  const ids = [player.regular_id, player.regularId, player.player_id, player.playerId, player.id].filter(Boolean).map(String);
+  if (ids.length) {
+    const byId = state.regulars.find((regular) => ids.includes(String(regular.id)));
+    if (byId) return byId;
+  }
+  const clean = normalizeName(player.full_name || player.fullName || player.name || player);
   return state.regulars.find((regular) => normalizeName(regular.full_name) === clean);
 }
 
-function profileForName(fullName = "") {
-  const clean = normalizeName(fullName);
+function profileForPlayer(player = {}) {
+  const ids = [player.profile_id, player.profileId, player.player_profile_id, player.playerProfileId, player.player_id, player.playerId, player.id].filter(Boolean).map(String);
+  if (ids.length) {
+    const byId = state.playerProfiles.find((profile) => ids.includes(String(profile.id)));
+    if (byId) return byId;
+  }
+  const clean = normalizeName(player.full_name || player.fullName || player.name || player);
   return state.playerProfiles.find((profile) => normalizeName(profile.full_name) === clean);
 }
 
+function regularForName(fullName = "") {
+  return regularForPlayer({ full_name: fullName });
+}
+
+function profileForName(fullName = "") {
+  return profileForPlayer({ full_name: fullName });
+}
+
 function nationalityForName(fullName = "") {
-  return profileForName(fullName)?.nationality || regularForName(fullName)?.nationality || "";
+  return nationalityForPlayer({ full_name: fullName });
+}
+
+function nationalityForPlayer(player = {}) {
+  return player.nationality ||
+    profileForPlayer(player)?.nationality ||
+    regularForPlayer(player)?.nationality ||
+    "";
 }
 
 function signupNationality(signup) {
-  return signup.nationality || nationalityForName(signupFullName(signup));
+  return nationalityForPlayer({ ...signup, full_name: signupFullName(signup) });
 }
 
 function enrichSignupNationalities(signups = []) {
   return (signups || []).map((signup) => ({
     ...signup,
-    nationality: signup.nationality || nationalityForName(signupFullName(signup))
+    nationality: signupNationality(signup)
   }));
 }
 
@@ -2241,6 +2316,7 @@ function renderCancelSelector() {
   `;
   select.disabled = cancellable.length === 0;
   if ([...select.options].some((option) => option.value === current)) select.value = current;
+  updateCancelButtonState();
   const message = el("cancelSignupMessage");
   if (message && !cancellable.length && state.signups.length) {
     setMessage(message, "Only signups made on this browser can be cancelled here. For older or guaranteed signups, message an organiser and they can cancel it from Admin.");
@@ -2380,6 +2456,13 @@ async function submitSignup(event) {
   }
 }
 
+function updateCancelButtonState() {
+  const select = el("cancelSignupSelect");
+  const button = el("cancelSignupButton");
+  if (!select || !button) return;
+  button.disabled = !select.value || select.disabled;
+}
+
 async function cancelSignup(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -2393,6 +2476,7 @@ async function cancelSignup(event) {
   const signupId = String(data.get("cancel_signup_id") || "");
   const signup = state.signups.find((item) => item.id === signupId);
   if (!signup) {
+    updateCancelButtonState();
     setMessage(message, "Please choose your name from the current signup list.", true);
     return;
   }
@@ -5095,6 +5179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const button = event.target.closest("[data-fixture-game]");
     if (button) selectPublicGame(button.dataset.fixtureGame);
   });
+  el("cancelSignupSelect")?.addEventListener("change", updateCancelButtonState);
   el("cancelSignupForm").addEventListener("submit", cancelSignup);
   el("photoGrid").addEventListener("click", (event) => {
     const card = event.target.closest("[data-photo]");
