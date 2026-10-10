@@ -1587,6 +1587,7 @@ function renderPlayerStats(results) {
     : `No player stats yet for ${monthLabel(state.statsMonth)}.`;
   el("playerStatsTable").innerHTML = stats.length ? `
     ${controlsMarkup}
+    ${mode === "overall" ? "<p class=\"stats-explainer\">Overall points = appearances + wins + draws + goals + assists.</p>" : ""}
     ${summaryMarkup(stats)}
     <details class="stats-expand full-rankings">
       <summary>View full rankings</summary>
@@ -2476,6 +2477,7 @@ async function adminLogin(event) {
   event.preventDefault();
   if (DEMO_MODE) {
     await loadAdmin();
+    el("adminLogin")?.classList.add("admin-authenticated");
     el("adminTools").classList.remove("hidden");
     setMessage(el("adminMessage"), "Demo admin loaded. Sample data only; no production writes.");
     return;
@@ -2500,6 +2502,7 @@ async function adminLogin(event) {
       sessionStorage.removeItem("aes_admin_verified");
     }
     await loadAdmin();
+    el("adminLogin")?.classList.add("admin-authenticated");
     el("adminTools").classList.remove("hidden");
     setMessage(el("adminMessage"), "Admin dashboard loaded.");
   } catch (error) {
@@ -2602,7 +2605,7 @@ function renderAdminGame(game) {
   if (nextGame) {
     const gameStart = new Date(zagrebDateTime(nextGame.game_date, String(nextGame.start_time || "21:00").slice(0, 5)));
     const adminStart = game ? new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5))) : gameStart;
-    el("adminCurrentGame").textContent = `Editing: ${fmtShortGame.format(adminStart)} · ${formatClock(game?.start_time || nextGame.start_time).replace(":00 ", "")} · Next active signup: ${fmtShortGame.format(gameStart)}`;
+    el("adminCurrentGame").textContent = `Selected: ${fmtShortGame.format(adminStart)} · ${formatClock(game?.start_time || nextGame.start_time).replace(":00 ", "")} · ${game?.location_name || nextGame.location_name || "AES FC"}`;
   }
   if (state.scheduleDirty) {
     const note = el("scheduleDirtyNote");
@@ -2650,7 +2653,7 @@ function renderAdminGamesList(options = {}) {
   });
   node.innerHTML = `
     <div class="admin-schedule-toolbar">
-      <p>Saturday 09:00 Europe/Zagreb opens the following Monday, Wednesday and Friday together.</p>
+      <p>Saturday 09:00 opens the following Monday, Wednesday and Friday.</p>
       <button class="secondary compact" type="button" data-save-schedule disabled>Save schedule changes</button>
       <button class="ghost compact" type="button" data-discard-schedule disabled>Discard</button>
       <span id="scheduleDirtyNote" class="dirty-note">No unsaved changes</span>
@@ -2672,20 +2675,28 @@ function renderAdminGameRow(game, draft = null) {
   const isActive = isGameAvailable(game);
   const values = draft || scheduleBaselinePayload(game);
   const status = game.game_status === "removed" ? "Removed" : isActive ? "Active" : "Inactive";
+  const start = new Date(zagrebDateTime(values.game_date, String(values.start_time || "21:00").slice(0, 5)));
+  const availability = count ? `${count} signup${count === 1 ? "" : "s"}` : "No signups";
   return `
     <div class="admin-game-row ${isActive ? "" : "inactive"}" data-game-row="${escapeHtml(game.id)}">
-      <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${values.is_active ? "checked" : ""}> Active</label>
-      <label>Date<input name="schedule_date" type="date" value="${escapeHtml(values.game_date)}"></label>
-      <label>Start<input name="schedule_start" type="time" value="${escapeHtml(values.start_time)}"></label>
-      <label>End<input name="schedule_end" type="time" value="${escapeHtml(values.end_time)}"></label>
-      <label>Signup opens<input name="schedule_signup_opens_at" type="datetime-local" value="${escapeHtml(toDatetimeLocalValue(values.signup_opens_at, values.game_date))}"></label>
-      <label>Venue<input name="schedule_location_name" value="${escapeHtml(values.location_name || "")}"></label>
-      <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(values.location_url || "")}"></label>
-      <div class="schedule-row-meta">
-        <strong>${escapeHtml(status)}</strong>
-        <small>${escapeHtml(count ? `${count} signup(s). Deactivating keeps them hidden from public signup until reactivated.` : "No signups yet.")}</small>
-      </div>
-      <button class="secondary compact" type="button" data-edit-game="${escapeHtml(game.id)}">Edit workspace</button>
+      <details class="schedule-fixture-editor">
+        <summary>
+          <span class="schedule-fixture-date">${escapeHtml(fmtShortGame.format(start))}</span>
+          <span class="schedule-fixture-main">${escapeHtml(formatClock(values.start_time).replace(":00 ", ""))} · ${escapeHtml(values.location_name || "AES FC")}</span>
+          <span class="schedule-fixture-meta">${escapeHtml(availability)} · ${escapeHtml(status)}</span>
+        </summary>
+        <div class="schedule-fields">
+          <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${values.is_active ? "checked" : ""}> Active</label>
+          <label>Date<input name="schedule_date" type="date" value="${escapeHtml(values.game_date)}"></label>
+          <label>Start<input name="schedule_start" type="time" value="${escapeHtml(values.start_time)}"></label>
+          <label>End<input name="schedule_end" type="time" value="${escapeHtml(values.end_time)}"></label>
+          <label>Signup opens<input name="schedule_signup_opens_at" type="datetime-local" value="${escapeHtml(toDatetimeLocalValue(values.signup_opens_at, values.game_date))}"></label>
+          <label>Venue<input name="schedule_location_name" value="${escapeHtml(values.location_name || "")}"></label>
+          <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(values.location_url || "")}"></label>
+        </div>
+        <p class="schedule-impact">${escapeHtml(count ? `${count} signup${count === 1 ? "" : "s"} preserved if this fixture is deactivated.` : "No signups yet.")}</p>
+      </details>
+      <button class="secondary compact" type="button" data-edit-game="${escapeHtml(game.id)}">Manage game</button>
       <button class="icon-button" type="button" data-remove-game="${escapeHtml(game.id)}">Remove</button>
     </div>
   `;
@@ -2790,6 +2801,36 @@ function renderResultForm() {
   el("teamBPlayers").innerHTML = selects("team_b");
   el("resultForm").game_date.value = state.adminGame?.game_date || state.game?.game_date || new Date().toISOString().slice(0, 10);
   el("resultFlowEditor").innerHTML = renderFlowEditor("game_flow_step");
+  renderResultReview();
+}
+
+function renderResultReview() {
+  const node = el("resultReview");
+  const form = el("resultForm");
+  if (!node || !form) return;
+  const data = new FormData(form);
+  const teamA = getResultTeam(data, "team_a");
+  const teamB = getResultTeam(data, "team_b");
+  const scoreA = Number(data.get("team_a_score") || 0);
+  const scoreB = Number(data.get("team_b_score") || 0);
+  const date = String(data.get("game_date") || "");
+  const contributions = (team, players) => players
+    .map((name) => {
+      const stats = getResultPlayerStats(data, team, [name])[name] || { goals: 0, assists: 0 };
+      const marks = [`${stats.goals || 0}G`, `${stats.assists || 0}A`].filter((item) => !item.startsWith("0"));
+      return `${displayResultName(name, true)}${marks.length ? ` (${marks.join(" · ")})` : ""}`;
+    })
+    .join(", ");
+  if (!teamA.length && !teamB.length && !date) {
+    node.innerHTML = "";
+    return;
+  }
+  node.innerHTML = `
+    <strong>Review before publishing</strong>
+    <span>${escapeHtml(date ? formatCompactResultDate(date) : "No date selected")} · ${scoreA}-${scoreB}</span>
+    <small>Side 1: ${escapeHtml(contributions("team_a", teamA) || "No players yet")}</small>
+    <small>Side 2: ${escapeHtml(contributions("team_b", teamB) || "No players yet")}</small>
+  `;
 }
 
 function resultOptionsHtml(selectedName = "") {
@@ -3434,7 +3475,7 @@ function renderAdminPhotos(photos) {
         <br><small>${escapeHtml(photo.url)}</small>
       </div>
       <div class="admin-photo-actions">
-        <button class="secondary compact" type="button" data-set-hero-photo="${escapeHtml(photo.url)}">Set hero</button>
+        <button class="secondary compact" type="button" data-set-hero-photo="${escapeHtml(photo.url)}" ${heroPhoto?.url === photo.url ? "disabled" : ""}>${heroPhoto?.url === photo.url ? "Current hero" : "Set hero"}</button>
         <button class="icon-button" type="button" data-remove-photo="${photo.id}">Remove</button>
       </div>
     </div>
@@ -4980,7 +5021,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("newGameForm").addEventListener("submit", addGame);
   el("resultForm").addEventListener("change", (event) => {
     if (event.target.matches("[data-result-player-select]")) updateResultManualVisibility();
+    renderResultReview();
   });
+  el("resultForm").addEventListener("input", renderResultReview);
   el("resultForm").addEventListener("submit", addResult);
   el("settingsForm").addEventListener("submit", saveSettings);
   el("photoForm").addEventListener("submit", addPhoto);
@@ -5061,6 +5104,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     sessionStorage.removeItem("aes_admin_verified");
     state.adminPassword = "";
     state.adminVerified = false;
+    el("adminLogin")?.classList.remove("admin-authenticated");
     el("adminTools").classList.add("hidden");
     setMessage(el("adminMessage"), "Logged out.");
   });
