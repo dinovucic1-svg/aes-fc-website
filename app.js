@@ -4585,24 +4585,51 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4) {
   return Math.min(lines.length, maxLines) * lineHeight;
 }
 
-function graphicPlayerStats(result, name) {
-  const stats = resultStats(result, name);
-  return `${"⚽".repeat(stats.goals)}${"🅰️".repeat(stats.assists)}`;
+const GRAPHIC_COLORS = {
+  paper: "#efe4ca",
+  paperDark: "#d7c49f",
+  navy: "#0b355f",
+  red: "#c82f2e",
+  black: "#15120e",
+  cream: "#f5ead1"
+};
+
+function graphicFont(weight = 900, size = 40) {
+  return `${weight} ${size}px Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif`;
 }
 
-function graphicShortName(name) {
-  const player = splitFullName(name);
-  return player.lastName ? `${player.firstName} ${player.lastName.charAt(0)}.` : player.firstName || player.fullName;
+async function waitForGraphicAssets() {
+  if (document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // System font fallback is fine for canvas export.
+    }
+  }
+}
+
+function seededGraphicRandom(seed = 1) {
+  let value = seed % 2147483647;
+  if (value <= 0) value += 2147483646;
+  return () => {
+    value = value * 16807 % 2147483647;
+    return (value - 1) / 2147483646;
+  };
 }
 
 function fitCanvasText(ctx, text, maxWidth, startSize, minSize, weight = 900) {
   let size = startSize;
   do {
-    ctx.font = `${weight} ${size}px Arial, sans-serif`;
+    ctx.font = graphicFont(weight, size);
     if (ctx.measureText(text).width <= maxWidth) return size;
     size -= 2;
   } while (size >= minSize);
   return minSize;
+}
+
+function graphicShortName(name) {
+  const player = splitFullName(name);
+  return player.lastName ? `${player.firstName} ${player.lastName.charAt(0)}.` : player.firstName || player.fullName;
 }
 
 function graphicPitchLabel(name, teamPlayers = []) {
@@ -4616,72 +4643,219 @@ function graphicPitchLabel(name, teamPlayers = []) {
   return duplicateFirst && player.lastName ? `${first} ${player.lastName.charAt(0)}.` : first;
 }
 
-function drawFloodlight(ctx, x, y, radius) {
-  const light = ctx.createRadialGradient(x, y, 0, x, y, radius);
-  light.addColorStop(0, "rgba(255,255,255,.24)");
-  light.addColorStop(.34, "rgba(255,255,255,.08)");
-  light.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = light;
+function drawGraphicBackground(ctx, width, height) {
+  ctx.fillStyle = GRAPHIC_COLORS.paper;
+  ctx.fillRect(0, 0, width, height);
+
+  const random = seededGraphicRandom(width + height + 2015);
+  ctx.save();
+  ctx.globalAlpha = .18;
+  for (let i = 0; i < 9000; i += 1) {
+    const shade = random() > .52 ? 40 : 255;
+    ctx.fillStyle = `rgba(${shade},${shade},${shade},${.04 + random() * .08})`;
+    ctx.fillRect(random() * width, random() * height, 1 + random() * 1.4, 1 + random() * 1.4);
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(11,53,95,.12)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 130; i += 1) {
+    const x = random() * width;
+    const y = random() * height;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (random() - .5) * 70, y + (random() - .5) * 28);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const edge = ctx.createRadialGradient(width / 2, height / 2, width * .2, width / 2, height / 2, height * .72);
+  edge.addColorStop(0, "rgba(255,255,255,0)");
+  edge.addColorStop(.72, "rgba(21,18,14,0)");
+  edge.addColorStop(1, "rgba(21,18,14,.22)");
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawInkWear(ctx, x, y, width, height, seed = 1, strength = .75) {
+  const random = seededGraphicRandom(seed);
+  ctx.save();
+  ctx.fillStyle = `rgba(239,228,202,${.38 * strength})`;
+  for (let i = 0; i < 95 * strength; i += 1) {
+    ctx.fillRect(x + random() * width, y + random() * height, 1 + random() * 3.5, 1 + random() * 2.5);
+  }
+  ctx.restore();
+}
+
+function drawDistressedText(ctx, text, x, y, options = {}) {
+  const {
+    size = 40,
+    weight = 900,
+    color = GRAPHIC_COLORS.navy,
+    align = "center",
+    baseline = "middle",
+    maxWidth = null,
+    minSize = 18,
+    seed = 7,
+    wear = .7
+  } = options;
+  ctx.save();
+  ctx.textAlign = align;
+  ctx.textBaseline = baseline;
+  const finalSize = maxWidth ? fitCanvasText(ctx, text, maxWidth, size, minSize, weight) : size;
+  ctx.font = graphicFont(weight, finalSize);
+  ctx.fillStyle = color;
+  ctx.fillText(text, x, y);
+  const metrics = ctx.measureText(text);
+  const left = align === "center" ? x - metrics.width / 2 : align === "right" ? x - metrics.width : x;
+  const top = y - finalSize * (baseline === "middle" ? .5 : baseline === "top" ? 0 : .8);
+  drawInkWear(ctx, left, top, metrics.width, finalSize * 1.05, seed, wear);
+  ctx.restore();
+  return finalSize;
+}
+
+function drawWornStrokeRect(ctx, x, y, width, height, color = GRAPHIC_COLORS.black, lineWidth = 6, seed = 1) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+  ctx.strokeRect(x, y, width, height);
+  drawInkWear(ctx, x - lineWidth, y - lineWidth, width + lineWidth * 2, height + lineWidth * 2, seed, .8);
+  ctx.restore();
+}
+
+function drawBrushStroke(ctx, x, y, width, height, color, seed = 1, slant = 0) {
+  const random = seededGraphicRandom(seed);
+  ctx.save();
+  ctx.translate(x + width / 2, y + height / 2);
+  ctx.rotate(slant);
+  ctx.translate(-width / 2, -height / 2);
+  ctx.strokeStyle = color;
+  ctx.lineCap = "butt";
+  for (let i = 0; i < 24; i += 1) {
+    const yy = height * (.16 + random() * .68);
+    ctx.lineWidth = 5 + random() * 14;
+    ctx.globalAlpha = .72 + random() * .28;
+    ctx.beginPath();
+    ctx.moveTo(-width * (.08 + random() * .08), yy + (random() - .5) * 38);
+    for (let p = 0; p <= 8; p += 1) {
+      ctx.lineTo(width * (p / 8) + (random() - .5) * 36, yy + (random() - .5) * 52);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  drawInkWear(ctx, 0, 0, width, height, seed + 3, 1.1);
+  ctx.restore();
+}
+
+function drawPrintedFootball(ctx, x, y, radius = 17) {
+  ctx.save();
+  ctx.fillStyle = GRAPHIC_COLORS.cream;
+  ctx.strokeStyle = GRAPHIC_COLORS.black;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function drawGraphicBackground(ctx, width, height) {
-  const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, "#061426");
-  bg.addColorStop(.38, "#0b1d33");
-  bg.addColorStop(.68, "#071f18");
-  bg.addColorStop(1, "#050b12");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, width, height);
-
-  drawFloodlight(ctx, 120, 70, 420);
-  drawFloodlight(ctx, width - 120, 70, 420);
-
-  ctx.fillStyle = "rgba(255,255,255,.035)";
-  for (let i = -120; i < width; i += 82) {
-    ctx.fillRect(i, 0, 38, height);
+  ctx.stroke();
+  ctx.fillStyle = GRAPHIC_COLORS.black;
+  for (let i = 0; i < 5; i += 1) {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(angle) * radius * .46, y + Math.sin(angle) * radius * .46, radius * .17, 0, Math.PI * 2);
+    ctx.fill();
   }
-
-  const haze = ctx.createLinearGradient(0, 140, 0, 720);
-  haze.addColorStop(0, "rgba(255,255,255,.05)");
-  haze.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = haze;
-  ctx.fillRect(0, 0, width, 720);
+  ctx.beginPath();
+  ctx.arc(x, y, radius * .22, 0, Math.PI * 2);
+  ctx.fill();
+  drawInkWear(ctx, x - radius, y - radius, radius * 2, radius * 2, Math.round(x + y), .7);
+  ctx.restore();
 }
 
-function drawGraphicTeamList(ctx, result, players, x, y, width, color) {
+function drawAssistMark(ctx, x, y, size = 34) {
+  ctx.save();
+  ctx.fillStyle = GRAPHIC_COLORS.red;
+  ctx.fillRect(x - size / 2, y - size / 2, size, size);
+  drawDistressedText(ctx, "A", x, y + 1, {
+    size: size * .68,
+    color: GRAPHIC_COLORS.cream,
+    seed: x + y,
+    wear: .45
+  });
+  ctx.restore();
+}
+
+function drawGraphicStats(ctx, stats, x, y, align = "left") {
+  const goals = Math.max(0, Number(stats.goals || 0));
+  const assists = Math.max(0, Number(stats.assists || 0));
+  const total = goals + assists;
+  if (!total) return;
+  const size = 33;
+  const gap = 10;
+  const width = total * size + Math.max(0, total - 1) * gap;
+  let cursor = align === "right" ? x - width + size / 2 : x + size / 2;
+  for (let i = 0; i < goals; i += 1) {
+    drawPrintedFootball(ctx, cursor, y, size / 2);
+    cursor += size + gap;
+  }
+  for (let i = 0; i < assists; i += 1) {
+    drawAssistMark(ctx, cursor, y, size);
+    cursor += size + gap;
+  }
+}
+
+async function drawGraphicFlag(ctx, nationality, x, y, size = 86) {
+  const flagUrl = nationalityFlag(nationality);
+  if (!flagUrl) return;
+  const image = await loadGraphicImage(flagUrl);
+  if (!image) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  const ratio = image.width && image.height ? image.width / image.height : 1.5;
+  let drawWidth = size;
+  let drawHeight = size / ratio;
+  if (drawHeight < size) {
+    drawHeight = size;
+    drawWidth = size * ratio;
+  }
+  ctx.drawImage(image, x - drawWidth / 2, y - drawHeight / 2, drawWidth, drawHeight);
+  ctx.fillStyle = "rgba(239,228,202,.16)";
+  ctx.fillRect(x - size / 2, y - size / 2, size, size);
+  drawInkWear(ctx, x - size / 2, y - size / 2, size, size, Math.round(x * 3 + y), .85);
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = `rgba(11,53,95,.58)`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+async function drawGraphicTeamList(ctx, result, players, x, y, options = {}) {
   const ordered = sortPlayersByContribution(players, result);
-  const rowHeight = Math.max(34, Math.min(48, 298 / Math.max(ordered.length, 1)));
-  const nameWidth = width * .55;
-  const statsX = x + width * .6;
-  ordered.forEach((name, index) => {
+  const {
+    side = "left",
+    flagX = x,
+    nameX = x + 120,
+    statX = x + 120,
+    rowHeight = Math.max(112, Math.min(128, 780 / Math.max(ordered.length, 1)))
+  } = options;
+  for (const [index, name] of ordered.entries()) {
     const rowY = y + index * rowHeight;
     const displayName = graphicShortName(name);
-    fitCanvasText(ctx, displayName, nameWidth, 35, 24, 900);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(displayName, x, rowY);
-    const stats = graphicPlayerStats(result, name);
-    if (stats) {
-      ctx.fillStyle = color;
-      fitCanvasText(ctx, stats, width * .38, 28, 20, 900);
-      ctx.fillText(stats, statsX, rowY);
-    }
-  });
-}
-
-function graphicFormationPositions(count, team) {
-  const layouts = {
-    1: [[.5, .55]],
-    2: [[.34, .52], [.66, .52]],
-    3: [[.5, .38], [.24, .70], [.76, .70]],
-    4: [[.32, .40], [.68, .40], [.32, .76], [.68, .76]],
-    5: [[.5, .35], [.22, .60], [.78, .60], [.34, .84], [.66, .84]],
-    6: [[.5, .35], [.22, .59], [.78, .59], [.18, .83], [.50, .83], [.82, .83]]
-  };
-  const base = layouts[Math.min(Math.max(count, 1), 6)] || layouts[6];
-  return team === "a" ? base : base.map(([x, y]) => [x, 1 - y]);
+    await drawGraphicFlag(ctx, nationalityForName(name), flagX, rowY, 84);
+    drawDistressedText(ctx, displayName.toUpperCase(), nameX, rowY - 20, {
+      size: 36,
+      minSize: 25,
+      color: GRAPHIC_COLORS.navy,
+      align: side === "left" ? "left" : "left",
+      maxWidth: 270,
+      seed: 40 + index + x
+    });
+    drawGraphicStats(ctx, resultStats(result, name), statX, rowY + 28, side === "left" ? "left" : "left");
+  }
 }
 
 function strokeGraphicArc(ctx, x, y, radius, startAngle, endAngle) {
@@ -4690,87 +4864,47 @@ function strokeGraphicArc(ctx, x, y, radius, startAngle, endAngle) {
   ctx.stroke();
 }
 
-function drawGraphicPitch(ctx, result, x, y, width, height) {
+function drawGraphicPitch(ctx, x = 70, y = 585, width = 940, height = 920) {
   ctx.save();
-  const grass = ctx.createLinearGradient(0, y, 0, y + height);
-  grass.addColorStop(0, "#1e8738");
-  grass.addColorStop(.5, "#14652c");
-  grass.addColorStop(1, "#0d431f");
-  ctx.fillStyle = grass;
-  drawRoundedRect(ctx, x, y, width, height, 18);
-  ctx.fill();
-
-  ctx.save();
-  drawRoundedRect(ctx, x, y, width, height, 18);
-  ctx.clip();
-  for (let i = 0; i < 10; i += 1) {
-    ctx.fillStyle = i % 2 ? "rgba(255,255,255,.045)" : "rgba(0,0,0,.045)";
-    ctx.fillRect(x + (width / 10) * i, y, width / 10, height);
-  }
-  ctx.restore();
-
-  ctx.strokeStyle = "rgba(255,255,255,.72)";
+  ctx.strokeStyle = GRAPHIC_COLORS.navy;
   ctx.lineWidth = 6;
   ctx.lineJoin = "round";
-  ctx.stroke();
-
+  ctx.globalAlpha = .96;
   ctx.beginPath();
-  ctx.moveTo(x, y + height / 2);
-  ctx.lineTo(x + width, y + height / 2);
+  ctx.moveTo(width / 2 + x, y);
+  ctx.lineTo(width / 2 + x, y + height);
   ctx.stroke();
-
   ctx.beginPath();
-  ctx.arc(x + width / 2, y + height / 2, 92, 0, Math.PI * 2);
+  ctx.arc(x + width / 2, y + height / 2, 54, 0, Math.PI * 2);
   ctx.stroke();
   ctx.beginPath();
   ctx.arc(x + width / 2, y + height / 2, 7, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,.82)";
+  ctx.fillStyle = GRAPHIC_COLORS.navy;
   ctx.fill();
-
-  const areaWidth = width * .46;
-  const sixWidth = areaWidth * .48;
-  const penaltyHeight = 136;
-  const sixHeight = 58;
-  const goalWidth = width * .22;
-  ctx.strokeRect(x + (width - areaWidth) / 2, y, areaWidth, penaltyHeight);
-  ctx.strokeRect(x + (width - areaWidth) / 2, y + height - penaltyHeight, areaWidth, penaltyHeight);
-  ctx.strokeRect(x + (width - sixWidth) / 2, y, sixWidth, sixHeight);
-  ctx.strokeRect(x + (width - sixWidth) / 2, y + height - sixHeight, sixWidth, sixHeight);
-  ctx.strokeRect(x + (width - goalWidth) / 2, y - 24, goalWidth, 24);
-  ctx.strokeRect(x + (width - goalWidth) / 2, y + height, goalWidth, 24);
-
-  strokeGraphicArc(ctx, x, y, 28, 0, Math.PI / 2);
-  strokeGraphicArc(ctx, x + width, y, 28, Math.PI / 2, Math.PI);
-  strokeGraphicArc(ctx, x, y + height, 28, -Math.PI / 2, 0);
-  strokeGraphicArc(ctx, x + width, y + height, 28, Math.PI, Math.PI * 1.5);
-
-  const drawPlayers = (players, team, color) => {
-    const ordered = sortPlayersByContribution(players, result).slice(0, 6);
-    const halfTop = team === "a" ? y : y + height / 2;
-    const positions = graphicFormationPositions(ordered.length, team);
-    const radius = ordered.length >= 6 ? 48 : ordered.length >= 4 ? 54 : 62;
-    positions.forEach(([relX, relY], index) => {
-      const name = ordered[index];
-      if (!name) return;
-      const px = x + width * relX;
-      const py = halfTop + (height / 2) * relY;
-      ctx.beginPath();
-      ctx.arc(px, py, radius, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 5;
-      ctx.stroke();
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const label = graphicPitchLabel(name, ordered);
-      fitCanvasText(ctx, label, radius * 1.55, 28, 17, 900);
-      ctx.fillText(label, px, py);
-    });
+  const bracketWidth = 98;
+  const bracketHeight = 150;
+  const drawBracket = (bx, mirror = false) => {
+    ctx.beginPath();
+    ctx.moveTo(bx, y);
+    ctx.lineTo(bx + (mirror ? -bracketWidth : bracketWidth), y);
+    ctx.moveTo(bx, y);
+    ctx.lineTo(bx, y + bracketHeight);
+    ctx.moveTo(bx, y + height);
+    ctx.lineTo(bx + (mirror ? -bracketWidth : bracketWidth), y + height);
+    ctx.moveTo(bx, y + height);
+    ctx.lineTo(bx, y + height - bracketHeight);
+    ctx.moveTo(bx, y + height / 2 - 72);
+    ctx.lineTo(bx, y + height / 2 + 72);
+    ctx.stroke();
+    strokeGraphicArc(ctx, bx, y + 52, 30, mirror ? Math.PI : 0, mirror ? Math.PI * 1.5 : Math.PI / 2);
+    strokeGraphicArc(ctx, bx, y + height - 52, 30, mirror ? Math.PI / 2 : -Math.PI / 2, mirror ? Math.PI : 0);
+    ctx.beginPath();
+    ctx.arc(bx + (mirror ? -42 : 42), y + height / 2, 9, 0, Math.PI * 2);
+    ctx.fill();
   };
-  drawPlayers(result.team_a_players || [], "a", "#0b5fb3");
-  drawPlayers(result.team_b_players || [], "b", "#d71f2f");
+  drawBracket(x, false);
+  drawBracket(x + width, true);
+  drawInkWear(ctx, x, y, width, height, 99, .75);
   ctx.restore();
 }
 
@@ -4785,32 +4919,53 @@ async function createMatchGraphic(resultId) {
     canvas.width = 1080;
     canvas.height = 1920;
     const ctx = canvas.getContext("2d");
+    await waitForGraphicAssets();
     drawGraphicBackground(ctx, canvas.width, canvas.height);
 
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#fff";
-    ctx.font = "800 30px Arial, sans-serif";
-    ctx.letterSpacing = "6px";
-    ctx.fillText(`AES FC • ${formatResultDate(result.game_date).toUpperCase()}`, 540, 94);
-    ctx.letterSpacing = "0px";
+    drawDistressedText(ctx, formatResultDate(result.game_date).toUpperCase(), 540, 118, {
+      size: 55,
+      color: GRAPHIC_COLORS.navy,
+      maxWidth: 850,
+      seed: 11,
+      wear: .8
+    });
 
-    ctx.fillStyle = "#fff";
-    ctx.font = "900 164px Arial, sans-serif";
-    ctx.fillText(`${result.team_a_score} - ${result.team_b_score}`, 540, 260);
+    drawBrushStroke(ctx, 105, 188, 392, 270, GRAPHIC_COLORS.red, 21, -.13);
+    drawBrushStroke(ctx, 578, 190, 392, 270, GRAPHIC_COLORS.navy, 33, -.12);
+    drawDistressedText(ctx, String(result.team_a_score), 360, 332, {
+      size: 245,
+      color: GRAPHIC_COLORS.cream,
+      seed: 51,
+      wear: 1.2
+    });
+    drawDistressedText(ctx, "-", 540, 342, {
+      size: 132,
+      color: GRAPHIC_COLORS.navy,
+      seed: 53,
+      wear: .65
+    });
+    drawDistressedText(ctx, String(result.team_b_score), 720, 332, {
+      size: 245,
+      color: GRAPHIC_COLORS.cream,
+      seed: 61,
+      wear: 1.2
+    });
 
-    ctx.strokeStyle = "rgba(255,255,255,.24)";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(540, 344);
-    ctx.lineTo(540, 646);
-    ctx.stroke();
-
-    ctx.textAlign = "left";
-    ctx.textBaseline = "alphabetic";
-    drawGraphicTeamList(ctx, result, result.team_a_players || [], 76, 390, 400, "#5bb3ff");
-    drawGraphicTeamList(ctx, result, result.team_b_players || [], 612, 390, 400, "#ff5e6b");
-
-    drawGraphicPitch(ctx, result, 70, 690, 940, 1160);
+    drawGraphicPitch(ctx, 65, 580, 950, 910);
+    await drawGraphicTeamList(ctx, result, result.team_a_players || [], 0, 670, {
+      side: "left",
+      flagX: 230,
+      nameX: 340,
+      statX: 340,
+      rowHeight: 122
+    });
+    await drawGraphicTeamList(ctx, result, result.team_b_players || [], 0, 670, {
+      side: "right",
+      flagX: 720,
+      nameX: 820,
+      statX: 820,
+      rowHeight: 122
+    });
 
     canvas.toBlob(async (blob) => {
       const filename = `aes-fc-match-graphic-${String(result.game_date).replaceAll("-", "")}.png`;
@@ -4836,20 +4991,19 @@ async function createMatchGraphic(resultId) {
 
 function drawStatBox(ctx, label, value, x, y, width, height) {
   ctx.save();
-  drawRoundedRect(ctx, x, y, width, height, 18);
-  ctx.fillStyle = "rgba(255,255,255,.08)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,.12)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,.68)";
-  ctx.font = "800 24px Arial, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  ctx.fillText(label.toUpperCase(), x + width / 2, y + 20);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "900 48px Arial, sans-serif";
-  ctx.fillText(String(value), x + width / 2, y + 56);
+  drawWornStrokeRect(ctx, x, y, width, height, GRAPHIC_COLORS.black, 6, x + y);
+  drawDistressedText(ctx, label.toUpperCase(), x + width / 2, y + 36, {
+    size: 38,
+    color: GRAPHIC_COLORS.black,
+    seed: x + y + 10,
+    wear: .65
+  });
+  drawDistressedText(ctx, String(value), x + width / 2, y + 94, {
+    size: 68,
+    color: GRAPHIC_COLORS.black,
+    seed: x + y + 20,
+    wear: .75
+  });
   ctx.restore();
 }
 
@@ -4867,47 +5021,45 @@ async function createPlayerOfMonthGraphic(month) {
   canvas.width = 1080;
   canvas.height = 1920;
   const ctx = canvas.getContext("2d");
+  await waitForGraphicAssets();
   drawGraphicBackground(ctx, canvas.width, canvas.height);
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillStyle = "rgba(255,255,255,.74)";
-  ctx.font = "800 38px Arial, sans-serif";
-  ctx.fillText("AES FC PLAYER OF THE MONTH", 540, 150);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "900 78px Arial, sans-serif";
-  ctx.fillText(monthLabel(targetMonth).toUpperCase(), 540, 238);
+  drawDistressedText(ctx, "AES FC PLAYER OF THE MONTH", 540, 112, {
+    size: 58,
+    color: GRAPHIC_COLORS.navy,
+    maxWidth: 850,
+    seed: 101
+  });
+  drawDistressedText(ctx, monthLabel(targetMonth).toUpperCase(), 540, 225, {
+    size: 118,
+    color: GRAPHIC_COLORS.red,
+    maxWidth: 950,
+    seed: 102,
+    wear: 1
+  });
 
-  const gradient = ctx.createLinearGradient(180, 330, 900, 560);
-  gradient.addColorStop(0, "#f6c453");
-  gradient.addColorStop(.5, "#fff2b7");
-  gradient.addColorStop(1, "#d69d22");
-  drawRoundedRect(ctx, 120, 318, 840, 300, 34);
-  ctx.fillStyle = "rgba(255,255,255,.08)";
-  ctx.fill();
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 5;
-  ctx.stroke();
-
-  const flag = nationalityFlag(nationalityForName(player.name));
-  if (flag) {
-    ctx.globalAlpha = .14;
-    ctx.font = "220px Arial, sans-serif";
-    ctx.fillText(flag, 800, 475);
-    ctx.globalAlpha = 1;
-  }
-  fitCanvasText(ctx, player.name, 760, 82, 46, 900);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(player.name, 540, 432);
-  ctx.fillStyle = "#f6c453";
-  ctx.font = "900 64px Arial, sans-serif";
-  ctx.fillText(`${player.points} POINTS`, 540, 525);
+  drawWornStrokeRect(ctx, 96, 318, 888, 286, GRAPHIC_COLORS.navy, 8, 103);
+  drawDistressedText(ctx, player.name, 540, 430, {
+    size: 116,
+    minSize: 58,
+    color: GRAPHIC_COLORS.black,
+    maxWidth: 800,
+    seed: 104,
+    wear: .85
+  });
+  drawDistressedText(ctx, `${player.points} POINTS`, 540, 535, {
+    size: 78,
+    color: GRAPHIC_COLORS.red,
+    maxWidth: 760,
+    seed: 105,
+    wear: .9
+  });
 
   const statY = 710;
-  const boxW = 250;
-  const boxH = 124;
-  const gap = 25;
-  const startX = 120;
+  const boxW = 270;
+  const boxH = 140;
+  const gap = 28;
+  const startX = 96;
   drawStatBox(ctx, "Apps", player.appearances, startX, statY, boxW, boxH);
   drawStatBox(ctx, "Win %", formatPercent(player.winPct), startX + boxW + gap, statY, boxW, boxH);
   drawStatBox(ctx, "Goals", player.goals, startX + (boxW + gap) * 2, statY, boxW, boxH);
@@ -4915,35 +5067,36 @@ async function createPlayerOfMonthGraphic(month) {
   drawStatBox(ctx, "G/game", formatRate(player.goalsPerGame), startX + boxW + gap, statY + boxH + gap, boxW, boxH);
   drawStatBox(ctx, "A/game", formatRate(player.assistsPerGame), startX + (boxW + gap) * 2, statY + boxH + gap, boxW, boxH);
 
-  ctx.fillStyle = "rgba(255,255,255,.7)";
-  ctx.font = "800 34px Arial, sans-serif";
-  ctx.fillText("MONTH FORM", 540, 1075);
+  drawDistressedText(ctx, "MONTH FORM", 540, 1118, {
+    size: 58,
+    color: GRAPHIC_COLORS.navy,
+    seed: 111
+  });
   const form = player.form;
-  const pillGap = form.length > 12 ? 48 : form.length > 8 ? 58 : 70;
-  const pillRadius = form.length > 12 ? 22 : 27;
+  const pillGap = form.length > 12 ? 50 : form.length > 8 ? 61 : 76;
+  const pillRadius = form.length > 12 ? 25 : 31;
   const pillStart = 540 - ((form.length - 1) * pillGap) / 2;
   form.forEach((outcome, index) => {
     const x = pillStart + index * pillGap;
     ctx.beginPath();
-    ctx.arc(x, 1148, pillRadius, 0, Math.PI * 2);
-    ctx.fillStyle = outcome === "W" ? "#169b62" : outcome === "D" ? "#f1b942" : "#df2d3f";
+    ctx.arc(x, 1202, pillRadius, 0, Math.PI * 2);
+    ctx.fillStyle = outcome === "W" ? GRAPHIC_COLORS.red : GRAPHIC_COLORS.navy;
     ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.font = `900 ${form.length > 12 ? 22 : 26}px Arial, sans-serif`;
-    ctx.fillText(outcome, x, 1148);
+    drawInkWear(ctx, x - pillRadius, 1202 - pillRadius, pillRadius * 2, pillRadius * 2, 120 + index, .8);
+    drawDistressedText(ctx, outcome, x, 1202, {
+      size: form.length > 12 ? 28 : 34,
+      color: GRAPHIC_COLORS.cream,
+      seed: 130 + index,
+      wear: .35
+    });
   });
 
-  drawRoundedRect(ctx, 120, 1265, 840, 320, 28);
-  ctx.fillStyle = "rgba(255,255,255,.07)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,.14)";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "900 42px Arial, sans-serif";
-  ctx.fillText("ALL-TIME", 540, 1335);
-  ctx.fillStyle = "rgba(255,255,255,.82)";
-  ctx.font = "800 31px Arial, sans-serif";
+  drawWornStrokeRect(ctx, 96, 1340, 888, 330, GRAPHIC_COLORS.black, 7, 160);
+  drawDistressedText(ctx, "ALL-TIME", 540, 1412, {
+    size: 70,
+    color: GRAPHIC_COLORS.red,
+    seed: 161
+  });
   [
     `Points: ${allTime.points}`,
     `Apps: ${allTime.appearances}`,
@@ -4952,14 +5105,23 @@ async function createPlayerOfMonthGraphic(month) {
     `Assists: ${allTime.assists}`,
     `G+A: ${allTime.goalContributions}`
   ].forEach((line, index) => {
-    const x = index % 2 === 0 ? 310 : 720;
-    const y = 1418 + Math.floor(index / 2) * 54;
-    ctx.fillText(line, x, y);
+    const x = index % 2 === 0 ? 205 : 666;
+    const y = 1502 + Math.floor(index / 2) * 58;
+    drawDistressedText(ctx, line, x, y, {
+      size: 42,
+      color: GRAPHIC_COLORS.black,
+      align: "left",
+      seed: 170 + index,
+      maxWidth: 350
+    });
   });
 
-  ctx.fillStyle = "rgba(255,255,255,.52)";
-  ctx.font = "800 28px Arial, sans-serif";
-  ctx.fillText("AES FC • Active Expats in Split", 540, 1745);
+  drawDistressedText(ctx, "AES FC • Active Expats in Split", 540, 1800, {
+    size: 39,
+    color: GRAPHIC_COLORS.navy,
+    seed: 190,
+    wear: .55
+  });
 
   canvas.toBlob(async (blob) => {
     const filename = `aes-fc-player-of-the-month-${targetMonth}.png`;
