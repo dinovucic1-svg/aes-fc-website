@@ -4649,41 +4649,60 @@ function drawGraphicBackground(ctx, width, height) {
 
   const random = seededGraphicRandom(width + height + 2015);
   ctx.save();
-  ctx.globalAlpha = .18;
-  for (let i = 0; i < 9000; i += 1) {
-    const shade = random() > .52 ? 40 : 255;
-    ctx.fillStyle = `rgba(${shade},${shade},${shade},${.04 + random() * .08})`;
-    ctx.fillRect(random() * width, random() * height, 1 + random() * 1.4, 1 + random() * 1.4);
+  ctx.globalAlpha = .16;
+  for (let i = 0; i < 15000; i += 1) {
+    const shade = random() > .48 ? 50 : 246;
+    const alpha = .025 + random() * .075;
+    const size = .65 + random() * 1.9;
+    ctx.fillStyle = `rgba(${shade},${shade},${shade},${alpha})`;
+    ctx.fillRect(random() * width, random() * height, size, size);
   }
   ctx.restore();
 
   ctx.save();
-  ctx.strokeStyle = "rgba(11,53,95,.12)";
-  ctx.lineWidth = 1;
-  for (let i = 0; i < 130; i += 1) {
+  for (let i = 0; i < 360; i += 1) {
     const x = random() * width;
     const y = random() * height;
+    const r = 2 + random() * 12;
+    ctx.fillStyle = random() > .5 ? "rgba(11,53,95,.018)" : "rgba(200,47,46,.014)";
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x + (random() - .5) * 70, y + (random() - .5) * 28);
-    ctx.stroke();
+    ctx.ellipse(x, y, r * (1 + random() * 1.8), r * (.3 + random() * .8), random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 
   const edge = ctx.createRadialGradient(width / 2, height / 2, width * .2, width / 2, height / 2, height * .72);
   edge.addColorStop(0, "rgba(255,255,255,0)");
   edge.addColorStop(.72, "rgba(21,18,14,0)");
-  edge.addColorStop(1, "rgba(21,18,14,.22)");
+  edge.addColorStop(1, "rgba(21,18,14,.18)");
   ctx.fillStyle = edge;
   ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.strokeStyle = "rgba(11,53,95,.08)";
+  ctx.lineWidth = 18;
+  ctx.strokeRect(12, 12, width - 24, height - 24);
+  ctx.restore();
 }
 
 function drawInkWear(ctx, x, y, width, height, seed = 1, strength = .75) {
   const random = seededGraphicRandom(seed);
   ctx.save();
-  ctx.fillStyle = `rgba(239,228,202,${.38 * strength})`;
-  for (let i = 0; i < 95 * strength; i += 1) {
-    ctx.fillRect(x + random() * width, y + random() * height, 1 + random() * 3.5, 1 + random() * 2.5);
+  ctx.fillStyle = `rgba(239,228,202,${.28 * strength})`;
+  for (let i = 0; i < 55 * strength; i += 1) {
+    const px = x + random() * width;
+    const py = y + random() * height;
+    const rx = 1 + random() * 5.5;
+    const ry = .6 + random() * 3.2;
+    ctx.beginPath();
+    ctx.ellipse(px, py, rx, ry, random() * Math.PI, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = .45 * strength;
+  for (let i = 0; i < 22 * strength; i += 1) {
+    const px = x + random() * width;
+    const py = y + random() * height;
+    ctx.fillRect(px, py, .8 + random() * 1.5, .8 + random() * 1.5);
   }
   ctx.restore();
 }
@@ -4720,7 +4739,7 @@ function drawWornStrokeRect(ctx, x, y, width, height, color = GRAPHIC_COLORS.bla
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.strokeRect(x, y, width, height);
-  drawInkWear(ctx, x - lineWidth, y - lineWidth, width + lineWidth * 2, height + lineWidth * 2, seed, .8);
+  drawInkWear(ctx, x - lineWidth, y - lineWidth, width + lineWidth * 2, height + lineWidth * 2, seed, .55);
   ctx.restore();
 }
 
@@ -4730,21 +4749,31 @@ function drawBrushStroke(ctx, x, y, width, height, color, seed = 1, slant = 0) {
   ctx.translate(x + width / 2, y + height / 2);
   ctx.rotate(slant);
   ctx.translate(-width / 2, -height / 2);
-  ctx.strokeStyle = color;
-  ctx.lineCap = "butt";
-  for (let i = 0; i < 24; i += 1) {
-    const yy = height * (.16 + random() * .68);
-    ctx.lineWidth = 5 + random() * 14;
-    ctx.globalAlpha = .72 + random() * .28;
-    ctx.beginPath();
-    ctx.moveTo(-width * (.08 + random() * .08), yy + (random() - .5) * 38);
-    for (let p = 0; p <= 8; p += 1) {
-      ctx.lineTo(width * (p / 8) + (random() - .5) * 36, yy + (random() - .5) * 52);
-    }
-    ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.globalAlpha = .97;
+  const top = [];
+  const bottom = [];
+  const segments = 13;
+  for (let i = 0; i <= segments; i += 1) {
+    const px = width * (i / segments);
+    const taper = Math.sin((i / segments) * Math.PI);
+    top.push([px + (random() - .5) * 28, height * (.22 - .08 * taper) + (random() - .5) * 34]);
+    bottom.unshift([px + (random() - .5) * 28, height * (.78 + .08 * taper) + (random() - .5) * 34]);
+  }
+  ctx.beginPath();
+  ctx.moveTo(-width * .08, height * (.5 + (random() - .5) * .16));
+  top.forEach(([px, py]) => ctx.lineTo(px, py));
+  ctx.lineTo(width * 1.08, height * (.5 + (random() - .5) * .16));
+  bottom.forEach(([px, py]) => ctx.lineTo(px, py));
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = .22;
+  for (let i = 0; i < 5; i += 1) {
+    const yy = height * (.28 + random() * .44);
+    ctx.fillRect(width * (.04 + random() * .08), yy, width * (.72 + random() * .22), 5 + random() * 12);
   }
   ctx.globalAlpha = 1;
-  drawInkWear(ctx, 0, 0, width, height, seed + 3, 1.1);
+  drawInkWear(ctx, 0, 0, width, height, seed + 3, .85);
   ctx.restore();
 }
 
@@ -4752,7 +4781,7 @@ function drawPrintedFootball(ctx, x, y, radius = 17) {
   ctx.save();
   ctx.fillStyle = GRAPHIC_COLORS.cream;
   ctx.strokeStyle = GRAPHIC_COLORS.black;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = Math.max(1.5, radius * .12);
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fill();
@@ -4767,7 +4796,7 @@ function drawPrintedFootball(ctx, x, y, radius = 17) {
   ctx.beginPath();
   ctx.arc(x, y, radius * .22, 0, Math.PI * 2);
   ctx.fill();
-  drawInkWear(ctx, x - radius, y - radius, radius * 2, radius * 2, Math.round(x + y), .7);
+  drawInkWear(ctx, x - radius, y - radius, radius * 2, radius * 2, Math.round(x + y), .36);
   ctx.restore();
 }
 
@@ -4779,28 +4808,87 @@ function drawAssistMark(ctx, x, y, size = 34) {
     size: size * .68,
     color: GRAPHIC_COLORS.cream,
     seed: x + y,
-    wear: .45
+    wear: .18
   });
   ctx.restore();
 }
 
-function drawGraphicStats(ctx, stats, x, y, align = "left") {
+function measureGraphicStats(ctx, stats, iconSize, gap, compact = false) {
   const goals = Math.max(0, Number(stats.goals || 0));
   const assists = Math.max(0, Number(stats.assists || 0));
-  const total = goals + assists;
-  if (!total) return;
-  const size = 33;
-  const gap = 10;
-  const width = total * size + Math.max(0, total - 1) * gap;
-  let cursor = align === "right" ? x - width + size / 2 : x + size / 2;
-  for (let i = 0; i < goals; i += 1) {
-    drawPrintedFootball(ctx, cursor, y, size / 2);
-    cursor += size + gap;
+  if (!goals && !assists) return 0;
+  if (!compact) {
+    const total = goals + assists;
+    return total * iconSize + Math.max(0, total - 1) * gap;
   }
-  for (let i = 0; i < assists; i += 1) {
-    drawAssistMark(ctx, cursor, y, size);
-    cursor += size + gap;
+  ctx.font = graphicFont(900, iconSize * .72);
+  let width = 0;
+  if (goals) width += iconSize + 6 + ctx.measureText(`x${goals}`).width;
+  if (assists) width += (width ? gap + 6 : 0) + iconSize + 6 + ctx.measureText(`x${assists}`).width;
+  return width;
+}
+
+function drawGraphicStats(ctx, stats, left, right, y, options = {}) {
+  const goals = Math.max(0, Number(stats.goals || 0));
+  const assists = Math.max(0, Number(stats.assists || 0));
+  if (!goals && !assists) return;
+  const maxWidth = Math.max(40, right - left);
+  let size = options.size || 29;
+  let gap = options.gap || 7;
+  let compact = goals + assists > 5;
+  let width = measureGraphicStats(ctx, { goals, assists }, size, gap, compact);
+  while (width > maxWidth && size > 19) {
+    size -= 2;
+    gap = Math.max(4, gap - .5);
+    compact = compact || size <= 23;
+    width = measureGraphicStats(ctx, { goals, assists }, size, gap, compact);
   }
+  if (width > maxWidth) {
+    compact = true;
+    width = measureGraphicStats(ctx, { goals, assists }, size, gap, compact);
+  }
+  let cursor = Math.min(left, right - width);
+  cursor = Math.max(left, cursor);
+  if (!compact) {
+    for (let i = 0; i < goals; i += 1) {
+      drawPrintedFootball(ctx, cursor + size / 2, y, size / 2);
+      cursor += size + gap;
+    }
+    for (let i = 0; i < assists; i += 1) {
+      drawAssistMark(ctx, cursor + size / 2, y, size);
+      cursor += size + gap;
+    }
+    return;
+  }
+  ctx.save();
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.font = graphicFont(900, size * .72);
+  ctx.fillStyle = GRAPHIC_COLORS.navy;
+  if (goals) {
+    drawPrintedFootball(ctx, cursor + size / 2, y, size / 2);
+    cursor += size + 6;
+    drawDistressedText(ctx, `x${goals}`, cursor, y + 1, {
+      size: size * .72,
+      color: GRAPHIC_COLORS.navy,
+      align: "left",
+      wear: .12,
+      seed: left + y + goals
+    });
+    cursor += ctx.measureText(`x${goals}`).width + gap + 6;
+  }
+  if (assists) {
+    drawAssistMark(ctx, cursor + size / 2, y, size);
+    cursor += size + 6;
+    drawDistressedText(ctx, `x${assists}`, cursor, y + 1, {
+      size: size * .72,
+      color: GRAPHIC_COLORS.navy,
+      align: "left",
+      wear: .12,
+      seed: right + y + assists
+    });
+  }
+  ctx.restore();
 }
 
 async function drawGraphicFlag(ctx, nationality, x, y, size = 86) {
@@ -4820,13 +4908,13 @@ async function drawGraphicFlag(ctx, nationality, x, y, size = 86) {
     drawWidth = size * ratio;
   }
   ctx.drawImage(image, x - drawWidth / 2, y - drawHeight / 2, drawWidth, drawHeight);
-  ctx.fillStyle = "rgba(239,228,202,.16)";
+  ctx.fillStyle = "rgba(239,228,202,.25)";
   ctx.fillRect(x - size / 2, y - size / 2, size, size);
-  drawInkWear(ctx, x - size / 2, y - size / 2, size, size, Math.round(x * 3 + y), .85);
+  drawInkWear(ctx, x - size / 2, y - size / 2, size, size, Math.round(x * 3 + y), .48);
   ctx.restore();
   ctx.save();
   ctx.strokeStyle = `rgba(11,53,95,.58)`;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.beginPath();
   ctx.arc(x, y, size / 2, 0, Math.PI * 2);
   ctx.stroke();
@@ -4839,22 +4927,27 @@ async function drawGraphicTeamList(ctx, result, players, x, y, options = {}) {
     side = "left",
     flagX = x,
     nameX = x + 120,
-    statX = x + 120,
-    rowHeight = Math.max(112, Math.min(128, 780 / Math.max(ordered.length, 1)))
+    statLeft = x + 320,
+    statRight = x + 485,
+    nameWidth = 240,
+    rowHeight = Math.max(104, Math.min(138, 840 / Math.max(ordered.length, 1))),
+    flagSize = 76,
+    nameSize = 41
   } = options;
   for (const [index, name] of ordered.entries()) {
     const rowY = y + index * rowHeight;
     const displayName = graphicShortName(name);
-    await drawGraphicFlag(ctx, nationalityForName(name), flagX, rowY, 84);
+    await drawGraphicFlag(ctx, nationalityForName(name), flagX, rowY, flagSize);
     drawDistressedText(ctx, displayName.toUpperCase(), nameX, rowY - 20, {
-      size: 36,
-      minSize: 25,
+      size: nameSize,
+      minSize: 27,
       color: GRAPHIC_COLORS.navy,
       align: side === "left" ? "left" : "left",
-      maxWidth: 270,
-      seed: 40 + index + x
+      maxWidth: nameWidth,
+      seed: 40 + index + x,
+      wear: .38
     });
-    drawGraphicStats(ctx, resultStats(result, name), statX, rowY + 28, side === "left" ? "left" : "left");
+    drawGraphicStats(ctx, resultStats(result, name), statLeft, statRight, rowY + 28, { size: 28 });
   }
 }
 
@@ -4869,11 +4962,13 @@ function drawGraphicPitch(ctx, x = 70, y = 585, width = 940, height = 920) {
   ctx.strokeStyle = GRAPHIC_COLORS.navy;
   ctx.lineWidth = 6;
   ctx.lineJoin = "round";
-  ctx.globalAlpha = .96;
+  ctx.globalAlpha = .78;
+  ctx.strokeRect(x, y, width, height);
   ctx.beginPath();
   ctx.moveTo(width / 2 + x, y);
   ctx.lineTo(width / 2 + x, y + height);
   ctx.stroke();
+  ctx.globalAlpha = .62;
   ctx.beginPath();
   ctx.arc(x + width / 2, y + height / 2, 54, 0, Math.PI * 2);
   ctx.stroke();
@@ -4881,30 +4976,18 @@ function drawGraphicPitch(ctx, x = 70, y = 585, width = 940, height = 920) {
   ctx.arc(x + width / 2, y + height / 2, 7, 0, Math.PI * 2);
   ctx.fillStyle = GRAPHIC_COLORS.navy;
   ctx.fill();
-  const bracketWidth = 98;
-  const bracketHeight = 150;
-  const drawBracket = (bx, mirror = false) => {
-    ctx.beginPath();
-    ctx.moveTo(bx, y);
-    ctx.lineTo(bx + (mirror ? -bracketWidth : bracketWidth), y);
-    ctx.moveTo(bx, y);
-    ctx.lineTo(bx, y + bracketHeight);
-    ctx.moveTo(bx, y + height);
-    ctx.lineTo(bx + (mirror ? -bracketWidth : bracketWidth), y + height);
-    ctx.moveTo(bx, y + height);
-    ctx.lineTo(bx, y + height - bracketHeight);
-    ctx.moveTo(bx, y + height / 2 - 72);
-    ctx.lineTo(bx, y + height / 2 + 72);
-    ctx.stroke();
-    strokeGraphicArc(ctx, bx, y + 52, 30, mirror ? Math.PI : 0, mirror ? Math.PI * 1.5 : Math.PI / 2);
-    strokeGraphicArc(ctx, bx, y + height - 52, 30, mirror ? Math.PI / 2 : -Math.PI / 2, mirror ? Math.PI : 0);
-    ctx.beginPath();
-    ctx.arc(bx + (mirror ? -42 : 42), y + height / 2, 9, 0, Math.PI * 2);
-    ctx.fill();
-  };
-  drawBracket(x, false);
-  drawBracket(x + width, true);
-  drawInkWear(ctx, x, y, width, height, 99, .75);
+  const boxW = 120;
+  const boxH = 295;
+  ctx.globalAlpha = .66;
+  ctx.strokeRect(x, y + height / 2 - boxH / 2, boxW, boxH);
+  ctx.strokeRect(x + width - boxW, y + height / 2 - boxH / 2, boxW, boxH);
+  strokeGraphicArc(ctx, x + boxW, y + height / 2, 54, -Math.PI / 2, Math.PI / 2);
+  strokeGraphicArc(ctx, x + width - boxW, y + height / 2, 54, Math.PI / 2, Math.PI * 1.5);
+  ctx.beginPath();
+  ctx.arc(x + 46, y + height / 2, 8, 0, Math.PI * 2);
+  ctx.arc(x + width - 46, y + height / 2, 8, 0, Math.PI * 2);
+  ctx.fill();
+  drawInkWear(ctx, x, y, width, height, 99, .45);
   ctx.restore();
 }
 
@@ -4930,41 +5013,58 @@ async function createMatchGraphic(resultId) {
       wear: .8
     });
 
-    drawBrushStroke(ctx, 105, 188, 392, 270, GRAPHIC_COLORS.red, 21, -.13);
-    drawBrushStroke(ctx, 578, 190, 392, 270, GRAPHIC_COLORS.navy, 33, -.12);
+    drawBrushStroke(ctx, 78, 180, 430, 275, GRAPHIC_COLORS.red, 21, -.09);
+    drawBrushStroke(ctx, 572, 180, 430, 275, GRAPHIC_COLORS.navy, 33, .08);
+    const teamAScoreSize = String(result.team_a_score).length > 1 ? 196 : 245;
+    const teamBScoreSize = String(result.team_b_score).length > 1 ? 196 : 245;
     drawDistressedText(ctx, String(result.team_a_score), 360, 332, {
-      size: 245,
+      size: teamAScoreSize,
       color: GRAPHIC_COLORS.cream,
+      maxWidth: 300,
+      minSize: 150,
       seed: 51,
-      wear: 1.2
+      wear: .85
     });
-    drawDistressedText(ctx, "-", 540, 342, {
-      size: 132,
-      color: GRAPHIC_COLORS.navy,
-      seed: 53,
-      wear: .65
-    });
+    ctx.fillStyle = GRAPHIC_COLORS.navy;
+    ctx.fillRect(503, 329, 74, 24);
+    drawInkWear(ctx, 503, 329, 74, 24, 53, .45);
     drawDistressedText(ctx, String(result.team_b_score), 720, 332, {
-      size: 245,
+      size: teamBScoreSize,
       color: GRAPHIC_COLORS.cream,
+      maxWidth: 300,
+      minSize: 150,
       seed: 61,
-      wear: 1.2
+      wear: .85
     });
 
-    drawGraphicPitch(ctx, 65, 580, 950, 910);
-    await drawGraphicTeamList(ctx, result, result.team_a_players || [], 0, 670, {
+    const teamACount = (result.team_a_players || []).length || 1;
+    const teamBCount = (result.team_b_players || []).length || 1;
+    const maxPlayers = Math.max(teamACount, teamBCount);
+    const listTop = maxPlayers <= 5 ? 575 : 565;
+    const listHeight = maxPlayers <= 5 ? 900 : 880;
+    const rowHeight = maxPlayers <= 5 ? Math.min(180, listHeight / maxPlayers) : Math.min(142, listHeight / maxPlayers);
+    drawGraphicPitch(ctx, 60, 520, 960, maxPlayers <= 5 ? 1110 : 1140);
+    await drawGraphicTeamList(ctx, result, result.team_a_players || [], 0, listTop, {
       side: "left",
-      flagX: 230,
-      nameX: 340,
-      statX: 340,
-      rowHeight: 122
+      flagX: 205,
+      nameX: 285,
+      statLeft: 392,
+      statRight: 505,
+      nameWidth: 210,
+      flagSize: 70,
+      nameSize: 44,
+      rowHeight
     });
-    await drawGraphicTeamList(ctx, result, result.team_b_players || [], 0, 670, {
+    await drawGraphicTeamList(ctx, result, result.team_b_players || [], 0, listTop, {
       side: "right",
-      flagX: 720,
-      nameX: 820,
-      statX: 820,
-      rowHeight: 122
+      flagX: 600,
+      nameX: 680,
+      statLeft: 812,
+      statRight: 970,
+      nameWidth: 190,
+      flagSize: 70,
+      nameSize: 44,
+      rowHeight
     });
 
     canvas.toBlob(async (blob) => {
@@ -4991,18 +5091,18 @@ async function createMatchGraphic(resultId) {
 
 function drawStatBox(ctx, label, value, x, y, width, height) {
   ctx.save();
-  drawWornStrokeRect(ctx, x, y, width, height, GRAPHIC_COLORS.black, 6, x + y);
+  drawWornStrokeRect(ctx, x, y, width, height, GRAPHIC_COLORS.navy, 5, x + y);
   drawDistressedText(ctx, label.toUpperCase(), x + width / 2, y + 36, {
-    size: 38,
+    size: 35,
     color: GRAPHIC_COLORS.black,
     seed: x + y + 10,
-    wear: .65
+    wear: .28
   });
   drawDistressedText(ctx, String(value), x + width / 2, y + 94, {
-    size: 68,
+    size: 70,
     color: GRAPHIC_COLORS.black,
     seed: x + y + 20,
-    wear: .75
+    wear: .38
   });
   ctx.restore();
 }
@@ -5025,37 +5125,39 @@ async function createPlayerOfMonthGraphic(month) {
   drawGraphicBackground(ctx, canvas.width, canvas.height);
 
   drawDistressedText(ctx, "AES FC PLAYER OF THE MONTH", 540, 112, {
-    size: 58,
+    size: 54,
     color: GRAPHIC_COLORS.navy,
     maxWidth: 850,
-    seed: 101
+    seed: 101,
+    wear: .5
   });
-  drawDistressedText(ctx, monthLabel(targetMonth).toUpperCase(), 540, 225, {
-    size: 118,
+  drawDistressedText(ctx, monthLabel(targetMonth).toUpperCase(), 540, 216, {
+    size: 104,
     color: GRAPHIC_COLORS.red,
     maxWidth: 950,
     seed: 102,
-    wear: 1
+    wear: .72
   });
 
-  drawWornStrokeRect(ctx, 96, 318, 888, 286, GRAPHIC_COLORS.navy, 8, 103);
-  drawDistressedText(ctx, player.name, 540, 430, {
-    size: 116,
+  drawWornStrokeRect(ctx, 92, 308, 896, 278, GRAPHIC_COLORS.navy, 8, 103);
+  drawWornStrokeRect(ctx, 106, 322, 868, 250, GRAPHIC_COLORS.navy, 3, 104);
+  drawDistressedText(ctx, player.name, 540, 416, {
+    size: 132,
     minSize: 58,
     color: GRAPHIC_COLORS.black,
-    maxWidth: 800,
+    maxWidth: 820,
     seed: 104,
-    wear: .85
+    wear: .58
   });
-  drawDistressedText(ctx, `${player.points} POINTS`, 540, 535, {
-    size: 78,
+  drawDistressedText(ctx, `${player.points} POINTS`, 540, 522, {
+    size: 76,
     color: GRAPHIC_COLORS.red,
     maxWidth: 760,
     seed: 105,
-    wear: .9
+    wear: .56
   });
 
-  const statY = 710;
+  const statY = 665;
   const boxW = 270;
   const boxH = 140;
   const gap = 28;
@@ -5067,35 +5169,37 @@ async function createPlayerOfMonthGraphic(month) {
   drawStatBox(ctx, "G/game", formatRate(player.goalsPerGame), startX + boxW + gap, statY + boxH + gap, boxW, boxH);
   drawStatBox(ctx, "A/game", formatRate(player.assistsPerGame), startX + (boxW + gap) * 2, statY + boxH + gap, boxW, boxH);
 
-  drawDistressedText(ctx, "MONTH FORM", 540, 1118, {
-    size: 58,
+  drawDistressedText(ctx, "MONTH FORM", 540, 1078, {
+    size: 56,
     color: GRAPHIC_COLORS.navy,
-    seed: 111
+    seed: 111,
+    wear: .42
   });
   const form = player.form;
-  const pillGap = form.length > 12 ? 50 : form.length > 8 ? 61 : 76;
-  const pillRadius = form.length > 12 ? 25 : 31;
+  const pillGap = form.length > 12 ? 50 : form.length > 8 ? 61 : 74;
+  const pillRadius = form.length > 12 ? 25 : 30;
   const pillStart = 540 - ((form.length - 1) * pillGap) / 2;
   form.forEach((outcome, index) => {
     const x = pillStart + index * pillGap;
     ctx.beginPath();
-    ctx.arc(x, 1202, pillRadius, 0, Math.PI * 2);
+    ctx.arc(x, 1160, pillRadius, 0, Math.PI * 2);
     ctx.fillStyle = outcome === "W" ? GRAPHIC_COLORS.red : GRAPHIC_COLORS.navy;
     ctx.fill();
-    drawInkWear(ctx, x - pillRadius, 1202 - pillRadius, pillRadius * 2, pillRadius * 2, 120 + index, .8);
-    drawDistressedText(ctx, outcome, x, 1202, {
+    drawInkWear(ctx, x - pillRadius, 1160 - pillRadius, pillRadius * 2, pillRadius * 2, 120 + index, .28);
+    drawDistressedText(ctx, outcome, x, 1160, {
       size: form.length > 12 ? 28 : 34,
       color: GRAPHIC_COLORS.cream,
       seed: 130 + index,
-      wear: .35
+      wear: .08
     });
   });
 
-  drawWornStrokeRect(ctx, 96, 1340, 888, 330, GRAPHIC_COLORS.black, 7, 160);
-  drawDistressedText(ctx, "ALL-TIME", 540, 1412, {
-    size: 70,
+  drawWornStrokeRect(ctx, 96, 1312, 888, 315, GRAPHIC_COLORS.navy, 5, 160);
+  drawDistressedText(ctx, "ALL-TIME", 540, 1382, {
+    size: 66,
     color: GRAPHIC_COLORS.red,
-    seed: 161
+    seed: 161,
+    wear: .42
   });
   [
     `Points: ${allTime.points}`,
@@ -5106,21 +5210,22 @@ async function createPlayerOfMonthGraphic(month) {
     `G+A: ${allTime.goalContributions}`
   ].forEach((line, index) => {
     const x = index % 2 === 0 ? 205 : 666;
-    const y = 1502 + Math.floor(index / 2) * 58;
+    const y = 1465 + Math.floor(index / 2) * 58;
     drawDistressedText(ctx, line, x, y, {
-      size: 42,
+      size: 39,
       color: GRAPHIC_COLORS.black,
       align: "left",
       seed: 170 + index,
-      maxWidth: 350
+      maxWidth: 350,
+      wear: .18
     });
   });
 
   drawDistressedText(ctx, "AES FC • Active Expats in Split", 540, 1800, {
-    size: 39,
+    size: 35,
     color: GRAPHIC_COLORS.navy,
     seed: 190,
-    wear: .55
+    wear: .2
   });
 
   canvas.toBlob(async (blob) => {
