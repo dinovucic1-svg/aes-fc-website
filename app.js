@@ -96,6 +96,13 @@ const fallbackPhotos = [
   { title: "AES FC match photo 3", url: "public/photos/aes-placeholder-3.svg", caption: "Mobile-friendly gallery with lightbox preview." }
 ];
 
+const DEFAULT_HERO_PHOTO = {
+  id: "default-hero-header",
+  title: "AES FC group photo",
+  url: "public/photos/aes-fc-hero-header.jpg",
+  caption: "AES FC group photo"
+};
+
 const fallbackResults = [];
 
 const demoPhotos = [
@@ -539,7 +546,7 @@ function activateDemoMode() {
   state.settings = {
     rules_title: "Signup rules",
     rules_text: DEFAULT_RULES_TEXT,
-    hero_photo_url: demoPhotos[0]?.url || ""
+    hero_photo_url: DEFAULT_HERO_PHOTO.url
   };
   state.signupCountsByGame = demoSignupCounts();
 }
@@ -1855,7 +1862,8 @@ function renderPhotos() {
 
 function selectedHeroPhoto(photos = state.photos.length ? state.photos : fallbackPhotos) {
   const stored = String(state.settings.hero_photo_url || localStorage.getItem("aesfc_hero_photo_url") || "").trim();
-  return photos.find((photo) => photo.url === stored || String(photo.id) === stored) || photos[0] || fallbackPhotos[0];
+  if (stored === DEFAULT_HERO_PHOTO.url || stored === DEFAULT_HERO_PHOTO.id) return DEFAULT_HERO_PHOTO;
+  return photos.find((photo) => photo.url === stored || String(photo.id) === stored) || DEFAULT_HERO_PHOTO;
 }
 
 function showPhoto(index) {
