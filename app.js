@@ -301,6 +301,7 @@ const state = {
   liveToastTimer: null,
   statsMode: "overall",
   statsMonth: "",
+  profileStatsPeriod: currentMonthKey(),
   resultsMonth: "",
   regularsDirty: false,
   scheduleDirty: false,
@@ -374,6 +375,7 @@ function assertAdmin() {
 
 function updateRouteMode() {
   document.body.classList.toggle("admin-route", window.location.hash === "#adminView");
+  renderPlayerProfileRoute();
 }
 
 function hasUnsavedAdminEdits() {
@@ -1109,45 +1111,7 @@ function shouldCountStatsResult(result) {
 }
 
 function calculatePlayerStats(results) {
-  const table = new Map();
-  const ensure = (name) => {
-    const clean = splitFullName(name).fullName;
-    if (!table.has(clean)) {
-      table.set(clean, { name: clean, appearances: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, points: 0, form: [] });
-    }
-    return table.get(clean);
-  };
-  results.filter(shouldCountStatsResult).sort((a, b) =>
-    new Date(a.game_date) - new Date(b.game_date) || new Date(a.created_at || 0) - new Date(b.created_at || 0)
-  ).forEach((result) => {
-    const winner = resultWinner(result);
-    const sides = [
-      { key: "a", players: result.team_a_players || [] },
-      { key: "b", players: result.team_b_players || [] }
-    ];
-    sides.forEach((side) => {
-      sortPlayerNames(side.players).forEach((name) => {
-        const row = ensure(name);
-        const stats = resultStats(result, name);
-        const outcome = winner === "draw" ? "D" : winner === side.key ? "W" : "L";
-        row.appearances += 1;
-        row.wins += winner === side.key ? 1 : 0;
-        row.draws += winner === "draw" ? 1 : 0;
-        row.losses += winner !== "draw" && winner !== side.key ? 1 : 0;
-        row.goals += stats.goals;
-        row.assists += stats.assists;
-        row.form.push(outcome);
-      });
-    });
-  });
-  return [...table.values()].map((row) => ({
-    ...row,
-    goalContributions: row.goals + row.assists,
-    goalsPerGame: row.appearances ? row.goals / row.appearances : 0,
-    assistsPerGame: row.appearances ? row.assists / row.appearances : 0,
-    winPct: row.appearances ? row.wins / row.appearances : 0,
-    points: row.appearances + row.wins + row.draws + row.goals + row.assists
-  }));
+  return buildPlayerStatsModel(results).rows;
 }
 
 function sortStatsRows(rows = [], mode = "overall") {
@@ -1175,10 +1139,535 @@ function formatRate(value) {
   return Number(value || 0).toFixed(1);
 }
 
+function playerSlug(name = "") {
+  return normalizeName(name)
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function playerProfileHref(name = "") {
+  const slug = playerSlug(name);
+  return slug ? `#player/${encodeURIComponent(slug)}` : "#playerProfile";
+}
+
+function playerProfileLink(name = "", label = name, className = "player-link") {
+  const clean = splitFullName(name).fullName;
+  if (!clean) return escapeHtml(label || "");
+  return `<a class="${className}" href="${escapeHtml(playerProfileHref(clean))}">${escapeHtml(label || clean)}</a>`;
+}
+
+function playerInitials(name = "") {
+  return splitFullName(name).fullName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toLocaleUpperCase())
+    .join("") || "FC";
+}
+
+function playerIdentityIndex() {
+  const records = [];
+  const add = (source, player = {}) => {
+    const fullName = splitFullName(player.full_name || player.fullName || player.name || "").fullName;
+    if (!fullName) return;
+    records.push({
+      id: player.id || "",
+      source,
+      name: fullName,
+      key: normalizeName(fullName),
+      slug: playerSlug(fullName),
+      nationality: player.nationality || "",
+      photo_url: player.photo_url || player.photoUrl || ""
+    });
+  };
+  (state.playerProfiles || []).forEach((profile) => add("profile", profile));
+  (state.regulars || []).forEach((regular) => add("regular", regular));
+  const byName = new Map();
+  records.forEach((record) => {
+    if (!byName.has(record.key)) byName.set(record.key, []);
+    byName.get(record.key).push(record);
+  });
+  const uniqueByName = new Map();
+  byName.forEach((matches, key) => {
+    const uniqueNames = new Set(matches.map((record) => record.name));
+    if (uniqueNames.size === 1) {
+      uniqueByName.set(key, {
+        ...matches[0],
+        id: matches.find((record) => record.id)?.id || "",
+        nationality: matches.find((record) => record.nationality)?.nationality || "",
+        photo_url: matches.find((record) => record.photo_url)?.photo_url || ""
+      });
+    }
+  });
+  return {
+    records,
+    forName(name = "") {
+      const clean = splitFullName(name).fullName;
+      const key = normalizeName(clean);
+      return uniqueByName.get(key) || {
+        id: "",
+        source: "result",
+        name: clean,
+        key,
+        slug: playerSlug(clean),
+        nationality: "",
+        photo_url: ""
+      };
+    },
+    forSlug(slug = "") {
+      const cleanSlug = decodeURIComponent(String(slug || "")).trim();
+      return records.find((record) => record.slug === cleanSlug);
+    }
+  };
+}
+
+function sortedCountedResults(results = []) {
+  return results.filter(shouldCountStatsResult).sort((a, b) =>
+    new Date(a.game_date) - new Date(b.game_date) || new Date(a.created_at || 0) - new Date(b.created_at || 0)
+  );
+}
+
+function buildPlayerStatsModel(results = []) {
+  const identity = playerIdentityIndex();
+  const players = new Map();
+  const partnerships = new Map();
+  const ensure = (name) => {
+    const info = identity.forName(name);
+    const key = info.key || normalizeName(name);
+    if (!players.has(key)) {
+      players.set(key, {
+        id: info.id,
+        key,
+        slug: info.slug,
+        name: info.name,
+        nationality: nationalityForName(info.name) || info.nationality || "",
+        photo_url: info.photo_url || "",
+        appearances: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals: 0,
+        assists: 0,
+        points: 0,
+        form: [],
+        matches: [],
+        sourceNames: new Set()
+      });
+    }
+    const row = players.get(key);
+    row.sourceNames.add(splitFullName(name).fullName);
+    if (!row.nationality) row.nationality = nationalityForName(name);
+    return row;
+  };
+  const partnershipKey = (a, b) => [a.key, b.key].sort().join("::");
+  sortedCountedResults(results).forEach((result) => {
+    const winner = resultWinner(result);
+    const sides = [
+      { key: "a", players: result.team_a_players || [] },
+      { key: "b", players: result.team_b_players || [] }
+    ];
+    sides.forEach((side) => {
+      const sidePlayers = sortPlayerNames(side.players).map((name) => ({ inputName: name, row: ensure(name) }));
+      const outcome = winner === "draw" ? "D" : winner === side.key ? "W" : "L";
+      sidePlayers.forEach(({ inputName, row }) => {
+        const stats = resultStats(result, inputName);
+        row.appearances += 1;
+        row.wins += winner === side.key ? 1 : 0;
+        row.draws += winner === "draw" ? 1 : 0;
+        row.losses += winner !== "draw" && winner !== side.key ? 1 : 0;
+        row.goals += stats.goals;
+        row.assists += stats.assists;
+        row.form.push(outcome);
+        row.matches.push({
+          result,
+          side: side.key,
+          outcome,
+          goals: stats.goals,
+          assists: stats.assists,
+          points: calculateSingleGamePoints(result, row.name, side.key)
+        });
+      });
+      sidePlayers.forEach(({ row }, index) => {
+        sidePlayers.slice(index + 1).forEach(({ row: teammate }) => {
+          const key = partnershipKey(row, teammate);
+          if (!partnerships.has(key)) {
+            partnerships.set(key, {
+              keys: [row.key, teammate.key],
+              names: [row.name, teammate.name],
+              shared: 0,
+              wins: 0,
+              draws: 0,
+              losses: 0,
+              matches: []
+            });
+          }
+          const partner = partnerships.get(key);
+          partner.shared += 1;
+          partner.wins += outcome === "W" ? 1 : 0;
+          partner.draws += outcome === "D" ? 1 : 0;
+          partner.losses += outcome === "L" ? 1 : 0;
+          partner.matches.push(result);
+        });
+      });
+    });
+  });
+  players.forEach((row) => {
+    row.goalContributions = row.goals + row.assists;
+    row.goalsPerGame = row.appearances ? row.goals / row.appearances : 0;
+    row.assistsPerGame = row.appearances ? row.assists / row.appearances : 0;
+    row.winPct = row.appearances ? row.wins / row.appearances : 0;
+    row.points = row.appearances + row.wins + row.draws + row.goals + row.assists;
+  });
+  return {
+    players,
+    rows: [...players.values()].map((row) => ({ ...row, sourceNames: [...row.sourceNames] })),
+    partnerships
+  };
+}
+
+function playerMatchId(result = {}) {
+  return String(result.id || result.game_date || "");
+}
+
+function playerMatchLabel(result = {}) {
+  return `${formatShortResultDate(result.game_date)} · ${result.team_a_score}-${result.team_b_score}`;
+}
+
+function streakLength(matches = [], outcomes = []) {
+  let best = 0;
+  let current = 0;
+  matches.forEach((match) => {
+    if (outcomes.includes(match.outcome)) {
+      current += 1;
+      best = Math.max(best, current);
+    } else {
+      current = 0;
+    }
+  });
+  return best;
+}
+
+function buildPlayerAchievementFacts(results = []) {
+  const model = buildPlayerStatsModel(results);
+  const achievements = [];
+  const add = (player, type, result, title, data = {}) => {
+    const matchId = playerMatchId(result);
+    achievements.push({
+      id: `${player.key}:${type}:${matchId || data.milestone || data.value || "fact"}`,
+      type,
+      playerKey: player.key,
+      playerName: player.name,
+      playerId: player.id || "",
+      matchId,
+      date: result?.game_date || data.date || "",
+      title,
+      data
+    });
+  };
+  model.rows.forEach((player) => {
+    const matches = [...player.matches].sort((a, b) => new Date(a.result.game_date) - new Date(b.result.game_date));
+    const firstAppearance = matches[0];
+    if (firstAppearance) add(player, "first-appearance", firstAppearance.result, "First recorded appearance", { appearance: 1 });
+    const firstGoal = matches.find((match) => match.goals > 0);
+    if (firstGoal) add(player, "first-goal", firstGoal.result, "First recorded goal", { goals: firstGoal.goals });
+    const firstAssist = matches.find((match) => match.assists > 0);
+    if (firstAssist) add(player, "first-assist", firstAssist.result, "First recorded assist", { assists: firstAssist.assists });
+    [10, 25, 50, 100].forEach((milestone) => {
+      const reached = matches[milestone - 1];
+      if (reached) add(player, "appearance-milestone", reached.result, `${milestone} recorded appearances`, { milestone });
+    });
+    matches.filter((match) => match.goals >= 3).forEach((match) => {
+      add(player, "hat-trick", match.result, "Hat-trick", { goals: match.goals });
+    });
+    let bestGoals = 0;
+    let bestAssists = 0;
+    matches.forEach((match) => {
+      if (match.goals > bestGoals) {
+        bestGoals = match.goals;
+        add(player, "personal-goals-record", match.result, "Personal goals record", { goals: match.goals });
+      }
+      if (match.assists > bestAssists) {
+        bestAssists = match.assists;
+        add(player, "personal-assists-record", match.result, "Personal assists record", { assists: match.assists });
+      }
+    });
+  });
+  model.partnerships.forEach((partnership) => {
+    [10, 25, 50, 100].forEach((milestone) => {
+      const reached = partnership.matches[milestone - 1];
+      if (!reached) return;
+      achievements.push({
+        id: `partnership:${partnership.keys.join("-")}:shared-${milestone}:${playerMatchId(reached)}`,
+        type: "partnership-milestone",
+        playerKeys: partnership.keys,
+        playerNames: partnership.names,
+        matchId: playerMatchId(reached),
+        date: reached.game_date,
+        title: `${milestone} recorded matches together`,
+        data: { milestone, shared: partnership.shared }
+      });
+    });
+  });
+  return { model, achievements };
+}
+
+function playerProfileFacts(nameOrSlug = "", results = state.results.length ? state.results : fallbackResults) {
+  const identity = playerIdentityIndex();
+  const fromSlug = identity.forSlug(nameOrSlug);
+  const normalizedSlug = decodeURIComponent(String(nameOrSlug || "")).trim();
+  const modelFacts = buildPlayerAchievementFacts(results);
+  const target = fromSlug || modelFacts.model.rows.find((row) => row.slug === normalizedSlug) || identity.forName(nameOrSlug);
+  const row = modelFacts.model.rows.find((item) => item.key === target.key) || {
+    ...target,
+    appearances: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goals: 0,
+    assists: 0,
+    goalContributions: 0,
+    goalsPerGame: 0,
+    assistsPerGame: 0,
+    winPct: 0,
+    points: 0,
+    form: [],
+    matches: []
+  };
+  const partnerships = [...modelFacts.model.partnerships.values()]
+    .filter((partnership) => partnership.keys.includes(row.key))
+    .map((partnership) => ({
+      ...partnership,
+      teammateKey: partnership.keys.find((key) => key !== row.key),
+      teammateName: partnership.names[partnership.keys.findIndex((key) => key !== row.key)]
+    }))
+    .sort((a, b) => b.shared - a.shared || a.teammateName.localeCompare(b.teammateName));
+  return {
+    player: row,
+    allRows: modelFacts.model.rows,
+    partnerships,
+    achievements: modelFacts.achievements.filter((achievement) =>
+      achievement.playerKey === row.key || achievement.playerKeys?.includes(row.key)
+    )
+  };
+}
+
+function playerHighlights(facts) {
+  const { player, partnerships } = facts;
+  const highlights = [];
+  const teammates = new Set();
+  partnerships.forEach((partner) => {
+    if (partner.teammateKey) teammates.add(partner.teammateKey);
+  });
+  if (teammates.size >= 3) {
+    highlights.push({
+      label: "Teammates",
+      text: `Played alongside ${teammates.size} different teammates since tracking began.`
+    });
+  }
+  const frequent = partnerships[0];
+  if (frequent?.shared >= 2) {
+    highlights.push({
+      label: "Most played alongside",
+      text: `${frequent.teammateName}: ${frequent.shared} shared appearances (${frequent.wins}W ${frequent.draws}D ${frequent.losses}L).`
+    });
+  }
+  const winRun = streakLength(player.matches || [], ["W"]);
+  const unbeatenRun = streakLength(player.matches || [], ["W", "D"]);
+  if (unbeatenRun >= 3) {
+    highlights.push({ label: "Best unbeaten run", text: `${unbeatenRun} recorded matches unbeaten.` });
+  } else if (winRun >= 2) {
+    highlights.push({ label: "Best winning run", text: `${winRun} recorded wins in a row.` });
+  }
+  const bestGoals = Math.max(0, ...(player.matches || []).map((match) => Number(match.goals || 0)));
+  const bestAssists = Math.max(0, ...(player.matches || []).map((match) => Number(match.assists || 0)));
+  if (bestGoals >= 2) highlights.push({ label: "Personal scoring best", text: `${bestGoals} goals in one recorded match.` });
+  if (bestAssists >= 2) highlights.push({ label: "Personal assist best", text: `${bestAssists} assists in one recorded match.` });
+  const nextMilestone = [10, 25, 50, 100].find((milestone) => player.appearances < milestone);
+  if (nextMilestone && player.appearances >= 1) {
+    highlights.push({ label: "Next milestone", text: `${nextMilestone - player.appearances} appearances from ${nextMilestone} recorded matches.` });
+  }
+  const varied = [];
+  highlights.forEach((highlight) => {
+    if (!varied.some((item) => item.label === highlight.label)) varied.push(highlight);
+  });
+  return varied.slice(0, 3);
+}
+
 function renderFormPills(form = []) {
   const recent = form.slice(-5);
   if (!recent.length) return "<span class=\"empty-stat\">–</span>";
   return `<span class="form-pills">${recent.map((outcome) => `<span class="form-pill ${outcome.toLowerCase()}">${outcome}</span>`).join("")}</span>`;
+}
+
+function renderPlayerAvatar(player = {}) {
+  const photo = String(player.photo_url || "").trim();
+  if (photo) return `<img src="${escapeHtml(photo)}" alt="${escapeHtml(player.name)} photo">`;
+  return `<span>${escapeHtml(playerInitials(player.name))}</span>`;
+}
+
+function renderProfileStat(label, value, note = "") {
+  return `
+    <div class="profile-stat">
+      <strong>${escapeHtml(value)}</strong>
+      <span>${escapeHtml(label)}</span>
+      ${note ? `<small>${escapeHtml(note)}</small>` : ""}
+    </div>
+  `;
+}
+
+function profilePeriodResults(period = state.profileStatsPeriod) {
+  const results = state.results.length ? state.results : fallbackResults;
+  return period === "all" ? results : monthResults(results, period || currentMonthKey());
+}
+
+function scopedPlayerRow(playerKey, period = state.profileStatsPeriod) {
+  return buildPlayerStatsModel(profilePeriodResults(period)).rows.find((row) => row.key === playerKey);
+}
+
+function renderPlayerProfileRoute() {
+  const match = window.location.hash.match(/^#player\/(.+)$/);
+  if (!match) {
+    el("playerProfile")?.classList.add("hidden");
+    return;
+  }
+  renderPlayerProfile(match[1]);
+}
+
+function renderPlayerProfile(slug) {
+  const node = el("playerProfile");
+  if (!node) return;
+  const facts = playerProfileFacts(slug);
+  const { player } = facts;
+  if (!player.name) {
+    node.classList.remove("hidden");
+    node.innerHTML = `
+      <div class="profile-shell">
+        <a class="profile-back" href="#results">← Back</a>
+        <p class="empty-note">Player profile not found.</p>
+      </div>
+    `;
+    return;
+  }
+  const currentMonth = currentMonthKey();
+  if (!state.profileStatsPeriod) state.profileStatsPeriod = currentMonth;
+  const period = state.profileStatsPeriod === "all" ? "all" : currentMonth;
+  state.profileStatsPeriod = period;
+  const scoped = scopedPlayerRow(player.key, period) || {
+    ...player,
+    appearances: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    goals: 0,
+    assists: 0,
+    points: 0,
+    goalsPerGame: 0,
+    assistsPerGame: 0,
+    winPct: 0,
+    form: [],
+    matches: []
+  };
+  const nationality = player.nationality || nationalityForName(player.name);
+  const flag = nationalityFlag(nationality);
+  const recentMatches = (scoped.matches?.length ? scoped.matches : player.matches || [])
+    .slice()
+    .sort((a, b) => new Date(b.result.game_date) - new Date(a.result.game_date))
+    .slice(0, 5);
+  const highlights = playerHighlights(facts);
+  const milestones = facts.achievements
+    .filter((achievement) => achievement.playerKey === player.key)
+    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .slice(0, 8);
+  node.classList.remove("hidden");
+  node.innerHTML = `
+    <div class="profile-shell">
+      <div class="profile-topline">
+        <a class="profile-back" href="#results">← Back to results</a>
+        <a class="profile-share" href="${escapeHtml(playerProfileHref(player.name))}">Share profile</a>
+      </div>
+      <article class="profile-hero-card">
+        <div class="profile-avatar">${renderPlayerAvatar(player)}</div>
+        <div class="profile-identity">
+          <p class="eyebrow">Player profile</p>
+          <h2>${escapeHtml(player.name)}</h2>
+          <p class="profile-nationality">
+            ${flag ? `<img src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
+            ${escapeHtml(nationalityFlagLabel(nationality) || "Nationality not recorded")}
+          </p>
+        </div>
+        <div class="profile-core-stats">
+          ${renderProfileStat("Appearances", player.appearances)}
+          ${renderProfileStat("Goals", player.goals)}
+          ${renderProfileStat("Assists", player.assists)}
+        </div>
+      </article>
+      <div class="profile-period-tabs" role="tablist" aria-label="Profile stats period">
+        <button type="button" data-profile-period="${escapeHtml(currentMonth)}" class="${period !== "all" ? "active" : ""}">This month</button>
+        <button type="button" data-profile-period="all" class="${period === "all" ? "active" : ""}">All time</button>
+      </div>
+      <p class="profile-period-note">${period === "all" ? "All time covers recorded history since tracking began." : `${monthLabel(currentMonth)} from recorded match results.`}</p>
+      <section class="profile-section profile-highlights">
+        <h3>Three highlights</h3>
+        <div class="profile-highlight-grid">
+          ${highlights.length ? highlights.map((highlight) => `
+            <article>
+              <span>${escapeHtml(highlight.label)}</span>
+              <p>${escapeHtml(highlight.text)}</p>
+            </article>
+          `).join("") : `<p class="empty-note">Not enough recorded match history for supported highlights yet.</p>`}
+        </div>
+      </section>
+      <section class="profile-section">
+        <h3>Recent matches</h3>
+        <div class="profile-match-list">
+          ${recentMatches.length ? recentMatches.map((match) => `
+            <a class="profile-match-row" href="${escapeHtml(matchDetailHref(match.result))}">
+              <span>${escapeHtml(playerMatchLabel(match.result))}</span>
+              <strong>${escapeHtml(match.outcome)}</strong>
+              <small>${match.goals ? `${match.goals}G` : ""}${match.goals && match.assists ? " · " : ""}${match.assists ? `${match.assists}A` : match.goals ? "" : "No G/A"}</small>
+            </a>
+          `).join("") : `<p class="empty-note">No recorded matches in this period.</p>`}
+        </div>
+      </section>
+      <section class="profile-section">
+        <h3>Deeper stats</h3>
+        <div class="profile-deep-grid">
+          ${renderProfileStat("W / D / L", `${scoped.wins}/${scoped.draws}/${scoped.losses}`)}
+          ${renderProfileStat("Ranking points", scoped.points, "same scoring as Rankings")}
+          ${renderProfileStat("Goals per game", formatRate(scoped.goalsPerGame), `${scoped.goals} goals / ${scoped.appearances} apps`)}
+          ${renderProfileStat("Assists per game", formatRate(scoped.assistsPerGame), `${scoped.assists} assists / ${scoped.appearances} apps`)}
+          ${renderProfileStat("Win rate", formatPercent(scoped.winPct), `${scoped.appearances} apps`)}
+          ${renderProfileStat("Recent form", scoped.form.slice(-5).join(" ") || "–")}
+        </div>
+      </section>
+      <section class="profile-section">
+        <h3>Milestones</h3>
+        <div class="profile-milestone-list">
+          ${milestones.length ? milestones.map((achievement) => `
+            <a class="profile-milestone" href="${escapeHtml(matchDetailHref({ id: achievement.matchId, game_date: achievement.date }))}">
+              <span>${escapeHtml(formatShortResultDate(achievement.date))}</span>
+              <strong>${escapeHtml(achievement.title)}</strong>
+            </a>
+          `).join("") : `<p class="empty-note">No recorded milestones yet.</p>`}
+        </div>
+      </section>
+      <section class="profile-section">
+        <h3>Most played alongside</h3>
+        <div class="profile-partnership-list">
+          ${facts.partnerships.length ? facts.partnerships.slice(0, 5).map((partner) => `
+            <article class="profile-partnership">
+              <strong>${playerProfileLink(partner.teammateName, partner.teammateName)}</strong>
+              <span>${partner.shared} shared appearances · ${partner.wins}W ${partner.draws}D ${partner.losses}L</span>
+              <small>${partner.matches.slice(-3).map((match) => `<a href="${escapeHtml(matchDetailHref(match))}">${escapeHtml(formatShortResultDate(match.game_date))}</a>`).join(" · ")}</small>
+            </article>
+          `).join("") : `<p class="empty-note">No teammate partnerships recorded yet.</p>`}
+        </div>
+      </section>
+    </div>
+  `;
+  node.scrollIntoView({ block: "start" });
 }
 
 function monthKey(dateString) {
@@ -1251,6 +1740,14 @@ function monthResults(results = [], month = "") {
 function formatResultLabel(result) {
   if (!result) return "None";
   return `${formatShortResultDate(result.game_date)} (${result.team_a_score}-${result.team_b_score})`;
+}
+
+function matchAnchor(result = {}) {
+  return `match-${String(result.id || result.game_date || "").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function matchDetailHref(result = {}) {
+  return `#${matchAnchor(result)}`;
 }
 
 function tiedNames(rows = [], key = "points") {
@@ -1648,7 +2145,7 @@ function renderPlayerStats(results) {
             <tr>
               <td class="rank-cell">${index + 1}</td>
               <td class="player-cell ${flag ? "has-flag" : ""}">
-                <strong>${escapeHtml(row.name)}</strong>
+                <strong>${playerProfileLink(row.name)}</strong>
                 ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
               </td>
               <td class="metric-cell"><strong>${escapeHtml(metricValue(row))}</strong></td>
@@ -1670,7 +2167,7 @@ function renderPlayerStats(results) {
             <td class="rank-cell">${index + 1}</td>
             <td class="move-cell">${renderRankMovement(movement.get(row.name))}</td>
             <td class="player-cell ${flag ? "has-flag" : ""}">
-              <strong>${escapeHtml(row.name)}</strong>
+              <strong>${playerProfileLink(row.name)}</strong>
               ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
             </td>
             <td><strong>${row.points}</strong></td>
@@ -1743,7 +2240,7 @@ function renderResultCard(result) {
   const teamAStatus = winner === "draw" ? "draw" : winner === "a" ? "winner" : "";
   const teamBStatus = winner === "draw" ? "draw" : winner === "b" ? "winner" : "";
   return `
-    <article class="result-card match-graphic-card">
+    <article class="result-card match-graphic-card" id="${escapeHtml(matchAnchor(result))}">
       <div class="result-score-block">
         <span class="result-date">${escapeHtml(formatCompactResultDate(result.game_date))}</span>
         <strong class="result-score">${escapeHtml(result.team_a_score)}-${escapeHtml(result.team_b_score)}</strong>
@@ -1806,11 +2303,11 @@ function renderResultPlayers(players = [], result = null, abbreviate = false) {
   const orderedPlayers = result ? sortPlayersByContribution(players, result) : sortPlayerNames(players);
   return orderedPlayers.map((name) => {
     const displayName = displayResultName(name, abbreviate);
-    if (!hasStats) return `<li><span>${escapeHtml(displayName)}</span></li>`;
+    if (!hasStats) return `<li><span>${playerProfileLink(name, displayName)}</span></li>`;
     const stats = resultStats(result, name);
     return `
       <li>
-        <span>${escapeHtml(displayName)}</span>
+        <span>${playerProfileLink(name, displayName)}</span>
         ${renderResultStatIcons(stats)}
       </li>
     `;
@@ -2010,7 +2507,7 @@ function renderPublicSignup(signup) {
   const flag = nationalityFlag(nationality);
   return `
     <li class="${flag ? "has-flag" : ""}">
-      <strong>${escapeHtml(signup.first_name)} ${escapeHtml(signup.last_name || "")}</strong>
+      <strong>${playerProfileLink(signupFullName(signup), `${signup.first_name} ${signup.last_name || ""}`)}</strong>
       ${flag ? `<img class="flag-bg" src="${escapeHtml(flag)}" alt="${escapeHtml(nationalityFlagLabel(nationality))} flag">` : ""}
     </li>
   `;
@@ -2192,6 +2689,7 @@ async function loadPublicState() {
     renderRules();
     renderPlayerSelectors();
     renderCancelSelector();
+    renderPlayerProfileRoute();
     return;
   }
   if (!configured) {
@@ -2203,6 +2701,7 @@ async function loadPublicState() {
     renderResults();
     renderRules();
     renderCancelSelector();
+    renderPlayerProfileRoute();
     return;
   }
   state.game = await getCurrentGame();
@@ -2224,6 +2723,7 @@ async function loadPublicState() {
   renderRules();
   renderPlayerSelectors();
   renderCancelSelector();
+  renderPlayerProfileRoute();
   setupRealtime();
 }
 
@@ -5431,6 +5931,12 @@ async function handleAdminClicks(event) {
 document.addEventListener("DOMContentLoaded", async () => {
   updateRouteMode();
   window.addEventListener("hashchange", updateRouteMode);
+  el("playerProfile")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-profile-period]");
+    if (!button) return;
+    state.profileStatsPeriod = button.dataset.profilePeriod;
+    renderPlayerProfileRoute();
+  });
   renderAdminLoginMode();
   document.querySelector("[name='player_count']").addEventListener("input", toggleExtraPlayers);
   document.querySelector("[name='full_name_select']").addEventListener("change", toggleManualName);
