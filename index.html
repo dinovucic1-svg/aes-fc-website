@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>AES FC Private Signup</title>
     <meta name="description" content="Private weekly football signup for AES FC in Split.">
-    <link rel="stylesheet" href="styles.css?v=20261010a">
+    <link rel="stylesheet" href="styles.css?v=20261010c">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -50,6 +50,7 @@
 
       <section class="fixture-section" aria-label="Upcoming games">
         <div class="section-head">
+          <p class="eyebrow">Next on the pitch</p>
           <h2>Upcoming fixtures</h2>
           <p class="fixture-note">Signup for next week opens every Saturday at 09:00, Split time.</p>
         </div>
@@ -57,14 +58,12 @@
       </section>
 
       <section class="signup-area">
-        <aside class="availability" aria-label="Selected game availability">
-          <p class="eyebrow">Selected match</p>
-          <h2 id="selectedGameTitle">Loading...</h2>
-          <p id="selectedGameSummary">Checking availability...</p>
-          <div class="status-banner" id="sheetStatus">Checking signup status...</div>
-        </aside>
-
         <div class="signup-column">
+          <div class="selected-signup-context" aria-label="Selected game availability">
+            <p id="selectedGameTitle">Loading...</p>
+            <strong id="selectedGameSummary">Checking availability...</strong>
+            <div class="status-banner" id="sheetStatus">Checking signup status...</div>
+          </div>
           <form class="signup-panel" id="signupForm">
             <div class="section-head">
               <h2>Sign up</h2>
@@ -144,9 +143,10 @@
         <div class="result-card">
           <div class="section-head results-title-row">
             <div>
+              <p class="eyebrow">The final whistle</p>
               <h2>Match Results</h2>
             </div>
-            <label class="result-month-control">Month
+            <label class="result-month-control"><span class="sr-only">Results month</span>
               <select id="resultsMonthSelect"></select>
             </label>
           </div>
@@ -155,6 +155,7 @@
         <div class="rankings-card stats-panel">
           <div class="section-head">
             <div>
+              <p id="rankingsEyebrow" class="eyebrow">The season so far</p>
               <h2>Rankings</h2>
             </div>
           </div>
@@ -164,6 +165,7 @@
 
       <section id="media" class="gallery-section">
         <div class="section-head">
+          <p class="eyebrow">Our people</p>
           <h2>Photos</h2>
         </div>
         <div class="photo-carousel" aria-label="AES FC photo gallery">
@@ -254,17 +256,21 @@
                       <h3>Players</h3>
                     </div>
                   </div>
-                  <form id="regularForm" class="regular-form admin-inline-form">
-                    <label>Add player<input name="regular_name" placeholder="Full name"></label>
-                    <label>Nationality<input name="regular_nationality" placeholder="Croatia"></label>
-                    <button class="secondary" type="submit">Add player</button>
-                  </form>
+                  <label class="admin-search">Search players<input id="adminPlayerSearch" type="search" placeholder="Type a name"></label>
+                  <details class="admin-subdrawer add-player-drawer">
+                    <summary>Add player</summary>
+                    <form id="regularForm" class="regular-form admin-inline-form">
+                      <label>Player name<input name="regular_name" placeholder="Full name"></label>
+                      <label>Nationality<input name="regular_nationality" placeholder="Croatia"></label>
+                      <label class="toggle-row"><input name="regular_is_active" type="checkbox" checked> Regular list player</label>
+                      <button class="secondary" type="submit">Add player</button>
+                    </form>
+                  </details>
                   <form id="profileForm" class="regular-form admin-inline-form hidden">
                     <label>Add profile only<input name="profile_name" placeholder="Full name"></label>
                     <label>Nationality<input name="profile_nationality" placeholder="Croatia"></label>
                     <button class="secondary" type="submit">Save profile</button>
                   </form>
-                  <label class="admin-search">Search players<input id="adminPlayerSearch" type="search" placeholder="Type a name"></label>
                   <div id="adminRegulars" class="admin-regulars"></div>
                   <div id="adminProfiles" class="admin-regulars hidden"></div>
                 </section>
@@ -274,8 +280,12 @@
                       <h3>Results</h3>
                     </div>
                   </div>
+                  <div class="admin-mode-switch" role="tablist" aria-label="Results workspace">
+                    <button type="button" class="active" data-results-panel-tab="matches">Matches</button>
+                    <button type="button" data-results-panel-tab="reports">Reports</button>
+                  </div>
                   <div class="admin-results-layout">
-                    <section class="admin-workspace-card">
+                    <section class="admin-workspace-card admin-results-panel active" data-results-panel="matches">
                       <div class="admin-subtitle-row">
                         <h4>Matches</h4>
                         <details class="admin-subdrawer publish-result-drawer">
@@ -283,6 +293,9 @@
                           <form id="resultForm" class="result-form">
                             <details class="form-subdrawer" open>
                               <summary>Match details</summary>
+                              <label>Fixture
+                                <select id="resultGameSelect" name="result_game_select"></select>
+                              </label>
                               <label>Game date<input name="game_date" type="date" required></label>
                               <div class="score-grid">
                                 <label>Side 1 score<input name="team_a_score" type="number" min="0" step="1" inputmode="numeric" pattern="[0-9]*" required></label>
@@ -312,7 +325,7 @@
                       </div>
                       <div id="adminResults" class="admin-results"></div>
                     </section>
-                    <section class="admin-workspace-card">
+                    <section class="admin-workspace-card admin-results-panel" data-results-panel="reports">
                       <h4>Reports</h4>
                       <div class="admin-tools-row">
                         <div class="admin-potm-tool">
@@ -339,17 +352,20 @@
                       <h3>Media</h3>
                     </div>
                   </div>
-                  <form id="photoForm" class="photo-form">
-                    <label>Photo title<input name="title" placeholder="Wednesday game"></label>
-                    <label>Upload photo<input name="file" type="file" accept="image/*"></label>
-                    <details class="quiet-drawer">
-                      <summary>Add from URL</summary>
-                      <label>Photo path or URL<input name="url" placeholder="public/photos/your-photo.jpg"></label>
-                    </details>
-                    <label>Caption<input name="caption" placeholder="Optional caption"></label>
-                    <button class="secondary" type="submit">Upload photo</button>
-                  </form>
                   <div id="adminPhotos" class="admin-photos"></div>
+                  <details class="admin-subdrawer upload-photo-drawer">
+                    <summary>Upload photo</summary>
+                    <form id="photoForm" class="photo-form">
+                      <label>Photo title<input name="title" placeholder="Wednesday game"></label>
+                      <label>Upload photo<input name="file" type="file" accept="image/*"></label>
+                      <label>Caption<input name="caption" placeholder="Optional caption"></label>
+                      <details class="quiet-drawer">
+                        <summary>Add from URL</summary>
+                        <label>Photo path or URL<input name="url" placeholder="public/photos/your-photo.jpg"></label>
+                      </details>
+                      <button class="secondary" type="submit">Upload photo</button>
+                    </form>
+                  </details>
                 </section>
                 <section class="admin-tab-panel" data-admin-panel="settings">
                   <div class="admin-panel-heading">
@@ -360,7 +376,7 @@
                   <div class="admin-workspace-card recurring-summary">
                     <h4>Recurring signup schedule</h4>
                     <p>Signups open Saturdays at 09:00 Split time for Monday 20:00 at Bili’s Pitch, Wednesday 21:00 at Gusar and Friday 20:00 at Gusar.</p>
-                    <p class="admin-help-text">Central editing for recurring defaults needs a database-backed settings migration so the scheduler can safely consume it. For now, edit specific fixtures in Games.</p>
+                    <p class="admin-help-text">To change an individual game, use Games. This keeps one-off changes separate from the weekly pattern.</p>
                   </div>
                   <form id="settingsForm" class="settings-form">
                     <label>Rules title<input name="rules_title" required></label>
@@ -445,6 +461,6 @@
     </div>
 
     <script src="config.js?v=20261009b"></script>
-    <script src="app.js?v=20261009e"></script>
+    <script src="app.js?v=20261010c"></script>
   </body>
 </html>

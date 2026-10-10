@@ -632,6 +632,25 @@ function guaranteedGamesLabel(regular = {}) {
     .join(", ");
 }
 
+function guaranteedGamesShortLabel(games = []) {
+  const map = { monday: "Mon", wednesday: "Wed", friday: "Fri" };
+  const selected = normalizeArray(games).map((key) => map[key]).filter(Boolean);
+  if (!selected.length) return "No guarantees";
+  if (selected.length === WEEKLY_GAME_DAYS.length) return "Mon, Wed, Fri";
+  return selected.join(", ");
+}
+
+function gameSignupSummary(game) {
+  const total = state.signupCountsByGame?.[game?.id] ?? (DEMO_MODE ? demoSignupRows(game?.id).length : 0);
+  const capacity = Number(game?.capacity || 12);
+  return {
+    playing: Math.min(total, capacity),
+    waiting: Math.max(0, total - capacity),
+    capacity,
+    total
+  };
+}
+
 function guaranteedAppliesToGame(regular = {}, game = state.game) {
   return guaranteedGamesForRegular(regular).includes(gameDayKey(game));
 }
@@ -970,7 +989,6 @@ function renderResults() {
   }
   el("recentResults").innerHTML = selectedResults.length
     ? `
-      <p class="stat-key">G = goals · A = assists</p>
       ${renderResultCard(latestResult)}
       ${olderResults.length ? `
         <details class="more-results">
@@ -1498,6 +1516,8 @@ function renderPlayerStats(results) {
   const months = availableStatsMonths(results);
   const scopedResults = selectedStatsResults(results);
   const isAllTime = state.statsMonth === "all";
+  const rankingsEyebrow = el("rankingsEyebrow");
+  if (rankingsEyebrow) rankingsEyebrow.textContent = isAllTime ? "All-time table" : "The season so far";
   const minimumWinAppearances = isAllTime ? 5 : 3;
   const allStats = calculatePlayerStats(scopedResults);
   const stats = statsRowsForMode(scopedResults, mode, minimumWinAppearances);
@@ -1534,7 +1554,7 @@ function renderPlayerStats(results) {
     <table class="stats-table stats-summary-table">
       <thead><tr><th>#</th><th>Player</th><th>${escapeHtml(metricLabel)}</th></tr></thead>
       <tbody>
-        ${rows.slice(0, 5).map((row, index) => {
+        ${rows.slice(0, 10).map((row, index) => {
           const nationality = nationalityForName(row.name);
           const flag = nationalityFlag(nationality);
           return `
@@ -1851,7 +1871,7 @@ function renderLists() {
   if (el("playingSummary")) el("playingSummary").textContent = `Playing · ${playing.length}/${capacity}`;
   el("subsCount").textContent = subs.length;
   el("playingList").innerHTML = playing.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No players yet</li>";
-  el("subsList").innerHTML = subs.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No subs yet</li>";
+  el("subsList").innerHTML = subs.map(renderPublicSignup).join("") || "<li class=\"empty-list-item\">No one waiting.</li>";
 }
 
 function renderGameSelector() {
@@ -1888,8 +1908,9 @@ function renderFixtureCards() {
     const statusClass = status.includes("spot") ? "open" : status.includes("Full") ? "full" : "";
     return `
       <button class="fixture ${active ? "active" : ""}" type="button" data-fixture-game="${escapeHtml(game.id)}" aria-pressed="${active ? "true" : "false"}">
+        <span class="fixture-marker" aria-hidden="true">${active ? "●" : "○"}</span>
         <span class="fixture-date">${escapeHtml(fmtShortGame.format(start))}</span>
-        <span class="fixture-main">${escapeHtml(formatClock(game.start_time).replace(":00 ", ""))} · ${escapeHtml(game.location_name || "AES FC")}</span>
+        <span class="fixture-main">${escapeHtml(formatPublicClock(game.start_time))} · ${escapeHtml(game.location_name || "AES FC")}</span>
         <span class="fixture-status ${statusClass}">${escapeHtml(status)}</span>
       </button>
     `;
@@ -1926,11 +1947,11 @@ function renderSheetStatus() {
   const playingCount = state.signups.filter((signup) => signup.status === "Playing").length;
   const capacity = Number(game.capacity || 12);
   const spotsLeft = Math.max(0, capacity - playingCount);
-  const selectedTitle = `${fmtShortGame.format(gameStart)} · ${formatClock(game.start_time).replace(":00 ", "")}`;
-  const selectedSummary = `${game.location_name || "AES FC"} · ${playingCount}/${capacity} playing${game.is_open ? ` · ${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : " · signup closed"}`;
+  const selectedTitle = `${gameStart.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Zagreb" }).replace(",", "")} · ${formatPublicClock(game.start_time)}`;
+  const selectedSummary = `${game.location_name || "AES FC"} · ${game.is_open ? `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left` : "signup closed"}`;
   setText("selectedGameTitle", selectedTitle);
   setText("selectedGameSummary", selectedSummary);
-  setText("listGameSummary", `${fmtShortGame.format(gameStart)}, ${formatClock(game.start_time).replace(":00 ", "")}`);
+  setText("listGameSummary", `${fmtShortGame.format(gameStart)}, ${formatPublicClock(game.start_time)}`);
   const visibleGames = state.publicGames?.length ? state.publicGames : state.games || [];
   const openCount = visibleGames.filter(isGameOpen).length;
   const upcomingCount = visibleGames.length;
@@ -1949,6 +1970,10 @@ function formatClock(value) {
   const suffix = hour >= 12 ? "PM" : "AM";
   const displayHour = ((hour + 11) % 12) + 1;
   return `${displayHour}:${minute} ${suffix}`;
+}
+
+function formatPublicClock(value) {
+  return formatClock(value).replace(":00 ", "").replace(" ", "");
 }
 
 function calendarDateValue(date) {
@@ -2654,7 +2679,7 @@ function renderAdminGamesList(options = {}) {
   node.innerHTML = `
     <div class="admin-schedule-toolbar">
       <p>Saturday 09:00 opens the following Monday, Wednesday and Friday.</p>
-      <button class="secondary compact" type="button" data-save-schedule disabled>Save schedule changes</button>
+      <button class="secondary compact" type="button" data-save-schedule disabled>Save changes</button>
       <button class="ghost compact" type="button" data-discard-schedule disabled>Discard</button>
       <span id="scheduleDirtyNote" class="dirty-note">No unsaved changes</span>
     </div>
@@ -2671,20 +2696,22 @@ function renderAdminGamesList(options = {}) {
 }
 
 function renderAdminGameRow(game, draft = null) {
-  const count = state.signupCountsByGame?.[game.id] || 0;
   const isActive = isGameAvailable(game);
+  const selected = String(game.id) === String(state.adminGame?.id);
+  const counts = gameSignupSummary(game);
   const values = draft || scheduleBaselinePayload(game);
   const status = game.game_status === "removed" ? "Removed" : isActive ? "Active" : "Inactive";
   const start = new Date(zagrebDateTime(values.game_date, String(values.start_time || "21:00").slice(0, 5)));
-  const availability = count ? `${count} signup${count === 1 ? "" : "s"}` : "No signups";
+  const availability = `${counts.playing} playing · ${counts.waiting} waiting`;
   return `
-    <div class="admin-game-row ${isActive ? "" : "inactive"}" data-game-row="${escapeHtml(game.id)}">
+    <div class="admin-game-row ${isActive ? "" : "inactive"} ${selected ? "selected" : ""}" data-game-row="${escapeHtml(game.id)}">
+      <button class="admin-fixture-select" type="button" data-edit-game="${escapeHtml(game.id)}" aria-pressed="${selected ? "true" : "false"}">
+        <span class="schedule-fixture-date">${escapeHtml(fmtShortGame.format(start))}</span>
+        <span class="schedule-fixture-main">${escapeHtml(formatClock(values.start_time).replace(":00 ", ""))} · ${escapeHtml(values.location_name || "AES FC")}</span>
+        <span class="schedule-fixture-meta">${escapeHtml(availability)} · ${escapeHtml(status)}</span>
+      </button>
       <details class="schedule-fixture-editor">
-        <summary>
-          <span class="schedule-fixture-date">${escapeHtml(fmtShortGame.format(start))}</span>
-          <span class="schedule-fixture-main">${escapeHtml(formatClock(values.start_time).replace(":00 ", ""))} · ${escapeHtml(values.location_name || "AES FC")}</span>
-          <span class="schedule-fixture-meta">${escapeHtml(availability)} · ${escapeHtml(status)}</span>
-        </summary>
+        <summary>Edit schedule</summary>
         <div class="schedule-fields">
           <label class="toggle-row schedule-active"><input name="schedule_active" type="checkbox" ${values.is_active ? "checked" : ""}> Active</label>
           <label>Date<input name="schedule_date" type="date" value="${escapeHtml(values.game_date)}"></label>
@@ -2694,10 +2721,11 @@ function renderAdminGameRow(game, draft = null) {
           <label>Venue<input name="schedule_location_name" value="${escapeHtml(values.location_name || "")}"></label>
           <label>Link<input name="schedule_location_url" type="url" value="${escapeHtml(values.location_url || "")}"></label>
         </div>
-        <p class="schedule-impact">${escapeHtml(count ? `${count} signup${count === 1 ? "" : "s"} preserved if this fixture is deactivated.` : "No signups yet.")}</p>
+        <div class="schedule-editor-actions">
+          <p class="schedule-impact">${escapeHtml(counts.total ? `${counts.total} signup${counts.total === 1 ? "" : "s"} preserved if this fixture is deactivated.` : "No signups yet.")}</p>
+          <button class="ghost compact danger-text" type="button" data-remove-game="${escapeHtml(game.id)}">Remove fixture</button>
+        </div>
       </details>
-      <button class="secondary compact" type="button" data-edit-game="${escapeHtml(game.id)}">Manage game</button>
-      <button class="icon-button" type="button" data-remove-game="${escapeHtml(game.id)}">Remove</button>
     </div>
   `;
 }
@@ -2776,6 +2804,19 @@ function resultPlayerOptions() {
 }
 
 function renderResultForm() {
+  const resultGameSelect = el("resultGameSelect");
+  if (resultGameSelect) {
+    const activeGames = (state.games || []).filter(isGameAvailable);
+    const selectedId = state.adminGame?.id || state.game?.id || "";
+    resultGameSelect.innerHTML = `
+      ${activeGames.map((game) => {
+        const start = new Date(zagrebDateTime(game.game_date, String(game.start_time || "21:00").slice(0, 5)));
+        const label = `${fmtShortGame.format(start)} · ${formatClock(game.start_time).replace(":00 ", "")} · ${game.location_name || "AES FC"}`;
+        return `<option value="${escapeHtml(game.id)}" ${String(game.id) === String(selectedId) ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("")}
+      <option value="manual">Manual date</option>
+    `;
+  }
   const options = resultPlayerOptions().map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
   const selects = (team) => Array.from({ length: RESULT_PLAYERS_PER_SIDE }, (_, index) => `
     <div class="result-player-row">
@@ -2963,15 +3004,15 @@ function renderAdminSignups(signups) {
       <tbody>
         ${signups.map((s) => `
           <tr data-admin-row="${s.id}">
-            <td>${escapeHtml(s.status)} #${s.position}</td>
-            <td>
+            <td data-label="Status">${escapeHtml(s.status)} #${s.position}</td>
+            <td data-label="Player">
               <input name="full_name" value="${escapeHtml(signupFullName(s))}" aria-label="Player full name">
             </td>
-            <td>
+            <td data-label="Nationality">
               <input name="nationality" value="${escapeHtml(signupNationality(s))}" placeholder="Croatia" aria-label="Nationality">
             </td>
-            <td><small>${escapeHtml(s.signed_up_by ? `Signed up by ${s.signed_up_by}` : s.comments || "Self signup")}</small></td>
-            <td>
+            <td data-label="Note"><small>${escapeHtml(s.signed_up_by ? `Signed up by ${s.signed_up_by}` : s.comments || "Self signup")}</small></td>
+            <td data-label="Actions">
               <button class="secondary compact" type="button" data-save-signup="${s.id}">Save</button>
               <button class="icon-button" type="button" data-remove-signup="${s.id}">Remove</button>
             </td>
@@ -3040,17 +3081,20 @@ function renderAdminRegulars() {
     .filter(([key]) => counts[key] > 12)
     .map(([key, label]) => `${label} has ${counts[key] || 0} guaranteed players; players over 12 will become subs.`);
   el("adminRegulars").innerHTML = `
-    <p class="admin-helper">Guaranteed spots apply to the upcoming weekly signup release: Monday, Wednesday and Friday games opened Saturday at 09:00.</p>
+    <details class="admin-helper-disclosure">
+      <summary>Guarantee info</summary>
+      <p>Guaranteed spots apply to the next Saturday 09:00 release for the following Monday, Wednesday and Friday games.</p>
+    </details>
     <div class="guarantee-summary">
       ${WEEKLY_GAME_DAYS.map(([key, label]) => `
-        <span>${escapeHtml(label)}: <strong>${counts[key] || 0}/12</strong></span>
+        <span>${escapeHtml(label.slice(0, 3))}: <strong>${counts[key] || 0}/12</strong></span>
       `).join("")}
     </div>
     ${warnings.length ? `<p class="admin-warning">${escapeHtml(warnings.join(" "))}</p>` : ""}
     ${players.map((player) => {
       const guaranteedGames = normalizeArray(player.guaranteed_games);
       const summaryLabel = player.is_regular
-        ? `Regular · ${guaranteedGames.length ? guaranteedGamesLabel({ guaranteed_games: guaranteedGames }) : "No guarantees"}`
+        ? `Regular · ${guaranteedGamesShortLabel(guaranteedGames)}`
         : "Profile only";
       return `
         <details class="admin-player-editor" data-player-row data-regular-row="${escapeHtml(player.regular_id || "")}" data-profile-row="${escapeHtml(player.profile_id || "")}" data-original-name="${escapeHtml(player.full_name)}">
@@ -3066,7 +3110,7 @@ function renderAdminRegulars() {
               <legend>Guaranteed games</legend>
               <label><input name="regular_guaranteed_all" type="checkbox" ${guaranteedGames.length === WEEKLY_GAME_DAYS.length ? "checked" : ""}> All</label>
               ${WEEKLY_GAME_DAYS.map(([key, label]) => `
-                <label><input name="regular_guaranteed_game" type="checkbox" value="${escapeHtml(key)}" ${guaranteedGames.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>
+                <label><input name="regular_guaranteed_game" type="checkbox" value="${escapeHtml(key)}" ${guaranteedGames.includes(key) ? "checked" : ""}> ${escapeHtml(label.slice(0, 3))}</label>
               `).join("")}
             </fieldset>
             <div class="profile-editor player-attribute-editor">
@@ -3094,7 +3138,7 @@ function markRegularsDirty() {
   const summary = el("adminRegulars")?.querySelector(".guarantee-summary");
   if (summary) {
     summary.innerHTML = WEEKLY_GAME_DAYS.map(([key, label]) => `
-      <span>${escapeHtml(label)}: <strong>${counts[key] || 0}/12</strong></span>
+      <span>${escapeHtml(label.slice(0, 3))}: <strong>${counts[key] || 0}/12</strong></span>
     `).join("");
   }
   const save = document.querySelector("[data-save-regulars]");
@@ -3261,6 +3305,15 @@ function selectAdminTab(tabName) {
   });
   document.querySelectorAll("[data-admin-panel]").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.adminPanel === tabName);
+  });
+}
+
+function selectResultsPanel(panelName = "matches") {
+  document.querySelectorAll("[data-results-panel-tab]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.resultsPanelTab === panelName);
+  });
+  document.querySelectorAll("[data-results-panel]").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.resultsPanel === panelName);
   });
 }
 
@@ -3472,7 +3525,10 @@ function renderAdminPhotos(photos) {
       <div>
         <strong>${escapeHtml(photo.title || "Untitled")}</strong>
         ${heroPhoto?.url === photo.url ? "<span class=\"admin-photo-badge\">Hero</span>" : ""}
-        <br><small>${escapeHtml(photo.url)}</small>
+        <details class="photo-path-details">
+          <summary>Asset path</summary>
+          <small>${escapeHtml(photo.url)}</small>
+        </details>
       </div>
       <div class="admin-photo-actions">
         <button class="secondary compact" type="button" data-set-hero-photo="${escapeHtml(photo.url)}" ${heroPhoto?.url === photo.url ? "disabled" : ""}>${heroPhoto?.url === photo.url ? "Current hero" : "Set hero"}</button>
@@ -3520,24 +3576,61 @@ async function addRegular(event) {
   const formData = new FormData(form);
   const fullName = String(formData.get("regular_name") || "").trim();
   const nationality = String(formData.get("regular_nationality") || "").trim();
+  const isRegular = formData.get("regular_is_active") === "on";
   if (!splitFullName(fullName).fullName) {
     setMessage(el("adminMessage"), "Please enter a player name.", true);
     return;
   }
   try {
     assertAdmin();
-    const { error } = await db.from("aesfc_regulars").upsert({
-      full_name: splitFullName(fullName).fullName,
-      nationality,
-      is_active: true,
-      sort_order: 100 + state.regulars.length
-    }, { onConflict: "full_name" });
-    if (error) throw error;
-    await upsertPlayerProfile(fullName, nationality);
+    const cleanName = splitFullName(fullName).fullName;
+    if (DEMO_MODE) {
+      const existingRegular = state.regulars.find((regular) => normalizeName(regular.full_name) === normalizeName(cleanName));
+      const existingProfile = state.playerProfiles.find((profile) => normalizeName(profile.full_name) === normalizeName(cleanName));
+      if (isRegular) {
+        if (existingRegular) {
+          existingRegular.nationality = nationality;
+          existingRegular.is_active = true;
+        } else {
+          state.regulars.push({
+            id: `demo-regular-${Date.now()}`,
+            full_name: cleanName,
+            nationality,
+            is_active: true,
+            guaranteed_signup: false,
+            guaranteed_games: []
+          });
+        }
+      }
+      if (existingProfile) {
+        existingProfile.nationality = nationality;
+      } else {
+        state.playerProfiles.push({
+          id: `demo-profile-${Date.now()}`,
+          full_name: cleanName,
+          nationality,
+          profile_tags: {}
+        });
+      }
+    } else {
+      if (isRegular) {
+        const { error } = await db.from("aesfc_regulars").upsert({
+          full_name: cleanName,
+          nationality,
+          is_active: true,
+          sort_order: 100 + state.regulars.length
+        }, { onConflict: "full_name" });
+        if (error) throw error;
+      }
+      await upsertPlayerProfile(cleanName, nationality);
+    }
     form.reset();
-    setMessage(el("adminMessage"), "Regular player added.");
-    state.regulars = await loadRegulars();
-    state.playerProfiles = await loadPlayerProfiles();
+    if (form.regular_is_active) form.regular_is_active.checked = true;
+    setMessage(el("adminMessage"), isRegular ? "Player added to regulars." : "Player profile added.");
+    if (!DEMO_MODE) {
+      state.regulars = await loadRegulars();
+      state.playerProfiles = await loadPlayerProfiles();
+    }
     renderAdminRegulars();
     renderAdminProfiles();
     renderPlayerSelectors();
@@ -4814,10 +4907,15 @@ async function handleAdminClicks(event) {
   const discardSchedule = event.target.hasAttribute("data-discard-schedule");
   const showMoreGames = event.target.hasAttribute("data-show-more-games");
   const adminTab = event.target.dataset.adminTab;
+  const resultsPanelTab = event.target.dataset.resultsPanelTab;
   try {
     assertAdmin();
     if (adminTab) {
       selectAdminTab(adminTab);
+      return;
+    }
+    if (resultsPanelTab) {
+      selectResultsPanel(resultsPanelTab);
       return;
     }
     if (showMoreGames) {
@@ -5021,6 +5119,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   el("newGameForm").addEventListener("submit", addGame);
   el("resultForm").addEventListener("change", (event) => {
     if (event.target.matches("[data-result-player-select]")) updateResultManualVisibility();
+    if (event.target.matches("#resultGameSelect")) {
+      const selected = (state.games || []).find((game) => String(game.id) === String(event.target.value));
+      if (selected) {
+        el("resultForm").game_date.value = selected.game_date;
+      }
+    }
     renderResultReview();
   });
   el("resultForm").addEventListener("input", renderResultReview);

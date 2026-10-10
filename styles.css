@@ -6807,6 +6807,180 @@ button,
 }
 
 /* Final admin schedule cleanup: keep schedule guidance and actions readable. */
+button,
+.primary,
+.secondary,
+.ghost,
+.icon-button,
+summary {
+  -webkit-tap-highlight-color: rgba(188, 58, 50, .18);
+}
+
+button,
+.primary,
+.secondary,
+.icon-button {
+  color: #fff;
+  background-color: var(--navy);
+  border: 1px solid var(--navy);
+}
+
+.primary {
+  background-color: var(--red);
+  border-color: var(--red);
+}
+
+.secondary:hover,
+.primary:hover,
+.icon-button:hover,
+.secondary:focus-visible,
+.primary:focus-visible,
+.icon-button:focus-visible {
+  color: #fff;
+  filter: brightness(.96);
+  outline: 2px solid rgba(188, 58, 50, .28);
+  outline-offset: 2px;
+}
+
+.ghost {
+  color: var(--navy);
+  background: transparent;
+  border: 1px solid rgba(13, 44, 73, .18);
+}
+
+.ghost:hover,
+.ghost:focus-visible {
+  color: var(--navy);
+  background: rgba(13, 44, 73, .06);
+  outline: 2px solid rgba(13, 44, 73, .18);
+  outline-offset: 2px;
+}
+
+button:disabled,
+.primary:disabled,
+.secondary:disabled,
+.ghost:disabled,
+.icon-button:disabled {
+  color: rgba(13, 44, 73, .42) !important;
+  background: rgba(13, 44, 73, .08) !important;
+  border-color: rgba(13, 44, 73, .08) !important;
+  cursor: not-allowed;
+  filter: none;
+}
+
+.eyebrow {
+  margin-bottom: 5px;
+  color: var(--red);
+  font-size: .72rem;
+  font-weight: 760;
+  letter-spacing: .08em;
+}
+
+.intro-copy h1 {
+  font-size: clamp(3.1rem, 8vw, 5.7rem);
+}
+
+.photo-story {
+  min-height: clamp(210px, 28vw, 280px);
+}
+
+.photo-story img {
+  object-position: center 42%;
+}
+
+.site-illustration,
+.intro::after {
+  opacity: .18;
+}
+
+.fixture {
+  position: relative;
+  border-left: 3px solid transparent;
+}
+
+.fixture.active {
+  border-left-color: var(--red);
+  background: rgba(255, 250, 239, .95);
+}
+
+.fixture-marker {
+  color: var(--red);
+  font-size: .75rem;
+}
+
+.selected-signup-context {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0 10px;
+  border-bottom: 1px solid rgba(13, 44, 73, .14);
+}
+
+.selected-signup-context p,
+.selected-signup-context strong {
+  margin: 0;
+}
+
+.selected-signup-context p {
+  color: var(--navy);
+  font-family: Oswald, Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.3rem;
+  font-weight: 720;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.selected-signup-context strong {
+  color: var(--muted);
+  font-size: .95rem;
+  font-weight: 560;
+}
+
+.selected-signup-context .status-banner {
+  margin-top: 4px;
+}
+
+.signup-area {
+  grid-template-columns: minmax(0, .95fr) minmax(340px, .8fr);
+}
+
+.signup-column {
+  grid-column: auto;
+}
+
+.list-panel {
+  grid-column: auto;
+}
+
+.admin-mode-switch {
+  display: inline-flex;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 3px;
+  border: 1px solid rgba(13, 44, 73, .12);
+  background: rgba(13, 44, 73, .04);
+}
+
+.admin-mode-switch button {
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--navy);
+  background: transparent;
+  border: 0;
+}
+
+.admin-mode-switch button.active {
+  color: #fff;
+  background: var(--navy);
+}
+
+.admin-results-panel {
+  display: none;
+}
+
+.admin-results-panel.active {
+  display: block;
+}
+
 .admin-schedule-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -6827,7 +7001,192 @@ button,
 }
 
 .admin-game-row {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid rgba(13, 44, 73, .12);
+  background: rgba(255, 250, 239, .58);
+}
+
+.admin-game-row.selected {
+  border-left: 3px solid var(--red);
+  background: rgba(255, 250, 239, .9);
+}
+
+.admin-fixture-select {
+  display: grid;
+  grid-template-columns: minmax(106px, auto) minmax(0, 1fr);
+  gap: 4px 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 9px 10px;
+  color: var(--navy);
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.admin-fixture-select[aria-pressed="true"] {
+  color: var(--navy);
+}
+
+.admin-fixture-select:hover,
+.admin-fixture-select:focus-visible {
+  background: rgba(188, 58, 50, .06);
+  outline: 2px solid rgba(188, 58, 50, .2);
+}
+
+.admin-fixture-select .schedule-fixture-meta {
+  grid-column: 2;
+}
+
+.schedule-fixture-editor {
+  background: rgba(255,255,255,.42);
+}
+
+.schedule-fixture-editor > summary {
+  min-height: 34px;
+  padding: 7px 10px;
+  color: var(--muted);
+  font-size: .86rem;
+  font-weight: 650;
+}
+
+.schedule-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 11px 10px;
+}
+
+.schedule-editor-actions .schedule-impact {
+  padding: 0;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.add-player-drawer,
+.upload-photo-drawer {
+  margin: 10px 0 12px;
+}
+
+.admin-helper-disclosure {
+  margin: 8px 0;
+  color: var(--muted);
+}
+
+.admin-helper-disclosure summary {
+  color: var(--navy);
+  font-weight: 650;
+}
+
+.admin-helper-disclosure p {
+  margin: 6px 0 0;
+  font-size: .9rem;
+  line-height: 1.35;
+}
+
+.admin-player-editor summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.admin-player-editor summary::after {
+  content: "+";
+  color: var(--red);
+  font-weight: 800;
+}
+
+.admin-player-editor[open] summary::after {
+  content: "–";
+}
+
+.admin-photos {
+  margin-bottom: 12px;
+}
+
+.admin-photo {
+  grid-template-columns: 120px minmax(0, 1fr);
+}
+
+.admin-photo img {
+  width: 120px;
+  height: 90px;
+}
+
+.admin-photo small {
+  display: block;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.admin-photo details small {
+  max-height: none;
+}
+
+@media (max-width: 820px) {
+  .intro-copy h1 {
+    font-size: clamp(3.6rem, 16vw, 4.7rem);
+  }
+
+  .photo-story {
+    min-height: 230px;
+  }
+
+  .photo-story img {
+    object-position: center 35%;
+  }
+
+  .signup-area {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .selected-signup-context {
+    order: 0;
+  }
+
+  .admin-fixture-select {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-fixture-select .schedule-fixture-meta {
+    grid-column: 1;
+  }
+}
+
+@media (min-width: 821px) {
+  .signup-column {
+    display: grid;
+    align-content: start;
+  }
+}
+
+/* Final admin schedule cleanup: keep schedule guidance and actions readable. */
+.admin-schedule-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px 10px;
+}
+
+.admin-schedule-toolbar p {
+  flex: 1 1 100%;
+  min-width: 240px;
+  max-width: none;
+  line-height: 1.35;
+}
+
+.admin-schedule-toolbar .dirty-note {
+  margin-left: auto;
+}
+
+.admin-game-row {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .schedule-fixture-editor summary {
@@ -6847,5 +7206,195 @@ button,
 
   .admin-game-row {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Final focused cleanup: public polish and mobile admin readability. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.eyebrow,
+.fixture-section .eyebrow,
+.rankings-card .eyebrow,
+.gallery-section .eyebrow {
+  color: var(--red-deep);
+}
+
+.result-card > .results-title-row .eyebrow {
+  color: rgba(255, 250, 241, .78);
+}
+
+.intro {
+  padding-bottom: clamp(12px, 2.2vw, 24px);
+}
+
+.photo-story {
+  margin-bottom: 0;
+}
+
+.fixture {
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: start;
+  text-align: left;
+}
+
+.fixture-marker {
+  grid-row: 1 / span 3;
+  justify-self: center;
+  padding-top: 2px;
+}
+
+.fixture-date,
+.fixture-main,
+.fixture-status {
+  grid-column: 2;
+  justify-self: stretch;
+  text-align: left;
+}
+
+.fixture-status {
+  margin-top: 2px;
+}
+
+.selected-signup-context {
+  padding-top: 0;
+}
+
+.selected-signup-context p {
+  font-size: clamp(1.08rem, 2.2vw, 1.28rem);
+}
+
+.result-month-control {
+  align-self: end;
+}
+
+.stat-key {
+  display: none;
+}
+
+#subsList .empty-list-item {
+  color: var(--muted);
+}
+
+.admin-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+
+.admin-tabs::after {
+  content: "";
+  flex: 0 0 10px;
+}
+
+.admin-tabs button,
+.admin-tab {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  white-space: nowrap;
+}
+
+.batch-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  background: var(--cream-soft);
+  border-top: 1px solid rgba(13, 44, 73, .14);
+  box-shadow: 0 -10px 24px rgba(43, 30, 12, .08);
+}
+
+.admin-regulars {
+  padding-bottom: 72px;
+}
+
+@media (max-width: 820px) {
+  .admin-regulars {
+    padding-bottom: 16px;
+  }
+
+  #adminSignups {
+    overflow: visible;
+  }
+
+  #adminSignups table,
+  #adminSignups tbody,
+  #adminSignups tr,
+  #adminSignups td {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #adminSignups table {
+    min-width: 0 !important;
+  }
+
+  #adminSignups thead {
+    display: none;
+  }
+
+  #adminSignups tr {
+    margin: 0 0 10px;
+    padding: 10px;
+    background: rgba(255, 250, 241, .92);
+    border: 1px solid rgba(13, 44, 73, .12);
+  }
+
+  #adminSignups td {
+    padding: 7px 0;
+    border: 0;
+  }
+
+  #adminSignups td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  #adminSignups input[name="full_name"],
+  #adminSignups input[name="nationality"] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #adminSignups td[data-label="Actions"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    align-items: center;
+  }
+
+  #adminSignups td[data-label="Actions"]::before {
+    grid-column: 1 / -1;
+  }
+
+  #adminSignups td[data-label="Actions"] button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .batch-actions {
+    position: static;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
 }
