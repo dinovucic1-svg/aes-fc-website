@@ -642,6 +642,13 @@ function signupNationality(signup) {
   return signup.nationality || nationalityForName(signupFullName(signup));
 }
 
+function enrichSignupNationalities(signups = []) {
+  return (signups || []).map((signup) => ({
+    ...signup,
+    nationality: signup.nationality || nationalityForName(signupFullName(signup))
+  }));
+}
+
 function gameDayKey(gameOrDate) {
   const date = typeof gameOrDate === "string" ? gameOrDate : gameOrDate?.game_date;
   const dayMap = { 1: "monday", 3: "wednesday", 5: "friday" };
@@ -812,43 +819,9 @@ async function loadUpcomingGames() {
   return state.games;
 }
 
-async function ensurePermanentRecurringGames(existingGames = []) {
+async function ensurePermanentRecurringGames() {
   if (!db) return;
-  const existingDates = new Set((existingGames || []).map((game) => String(game.game_date)));
-  const exceptionDates = await loadFixtureExceptionDates();
-  const today = zagrebParts().date;
-  const scheduleStart = "2026-10-12";
-  const targets = [];
-  for (const slot of PERMANENT_RECURRING_SLOTS) {
-    let gameDate = nextDateForWeekday(today, slot.weekday);
-    if (new Date(`${gameDate}T12:00:00Z`) < new Date(`${slot.first_date}T12:00:00Z`)) {
-      gameDate = slot.first_date;
-    }
-    for (let index = 0; index < 10; index += 1) {
-      const targetDate = addDays(gameDate, index * 7);
-      if (slot.last_date && new Date(`${targetDate}T12:00:00Z`) > new Date(`${slot.last_date}T12:00:00Z`)) break;
-      if (new Date(`${targetDate}T12:00:00Z`) < new Date(`${scheduleStart}T12:00:00Z`) && targetDate !== "2026-09-30") continue;
-      if (exceptionDates.has(targetDate)) continue;
-      if (existingDates.has(targetDate)) continue;
-      existingDates.add(targetDate);
-      targets.push({
-        game_date: targetDate,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        location_name: slot.location_name,
-        location_url: slot.location_url,
-        signup_opens_at: signupOpenForGame(targetDate),
-        is_recurring: true,
-        is_active: true,
-        game_status: "active",
-        guest_delay_hours: 24
-      });
-    }
-  }
-  if (!targets.length) return;
-  const { error } = await db
-    .from("aesfc_games")
-    .upsert(targets, { onConflict: "game_date", ignoreDuplicates: true });
+  const { error } = await db.rpc("aesfc_ensure_weekly_games_and_guarantees");
   if (error) throw error;
 }
 
@@ -2157,13 +2130,14 @@ async function loadPublicState() {
     return;
   }
   state.game = await getCurrentGame();
+  state.regulars = await loadRegulars();
+  state.playerProfiles = await loadPlayerProfiles();
   await ensureGuaranteedSignupsForUpcomingGames();
-  state.signups = await loadSignups(state.game.id);
+  state.signupCountsByGame = await loadSignupCountsForGames(state.games);
+  state.signups = enrichSignupNationalities(await loadSignups(state.game.id));
   state.cancelledSignups = await loadCancelledSignups(state.game.id);
   state.photos = await loadPhotos();
   state.settings = await loadSettings();
-  state.regulars = await loadRegulars();
-  state.playerProfiles = await loadPlayerProfiles();
   state.results = await loadResults();
   renderSheetStatus();
   renderGameSelector();
@@ -2193,7 +2167,8 @@ async function selectPublicGame(gameId) {
     return;
   }
   await ensureOrganizerSignups(state.game);
-  state.signups = await loadSignups(state.game.id);
+  state.signupCountsByGame = await loadSignupCountsForGames(state.games);
+  state.signups = enrichSignupNationalities(await loadSignups(state.game.id));
   state.cancelledSignups = await loadCancelledSignups(state.game.id);
   renderSheetStatus();
   renderGameSelector();
