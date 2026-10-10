@@ -4,7 +4,6 @@ const DEMO_MODE = params.get("demo") === "1" || params.get("demo") === "true";
 const configured = !DEMO_MODE && cfg.supabaseUrl && !cfg.supabaseUrl.includes("PASTE_") && cfg.supabaseAnonKey && !cfg.supabaseAnonKey.includes("PASTE_");
 const db = configured && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
 
-const ADMIN_PASSWORD = "AESfc2015";
 const SIGNUP_PASSWORD = "2015";
 const MAP_URL = "https://maps.app.goo.gl/VGiFAjKSD9yt7YuB8";
 const GUSAR_MAP_URL = "https://www.google.com/maps/search/?api=1&query=Gusar%20Split";
@@ -324,14 +323,16 @@ function requireDb() {
 }
 
 function usesSupabaseAdminAuth() {
-  return String(cfg.adminAuthMode || "password").toLowerCase() === "supabase";
+  return String(cfg.adminAuthMode || "password").toLowerCase().startsWith("supabase");
+}
+
+function usesSharedPasswordAdminAuth() {
+  return String(cfg.adminAuthMode || "").toLowerCase() === "supabase-shared-password";
 }
 
 function hasAdminAccess() {
   if (DEMO_MODE) return true;
-  return usesSupabaseAdminAuth()
-    ? state.adminVerified
-    : state.adminPassword === ADMIN_PASSWORD;
+  return usesSupabaseAdminAuth() ? state.adminVerified : false;
 }
 
 function assertAdmin() {
@@ -2523,9 +2524,12 @@ async function adminLogin(event) {
   const formData = new FormData(event.currentTarget);
   try {
     if (usesSupabaseAdminAuth()) {
-      const email = String(formData.get("email") || "").trim();
+      const email = usesSharedPasswordAdminAuth()
+        ? String(cfg.adminEmail || "").trim()
+        : String(formData.get("email") || "").trim();
       const password = String(formData.get("password") || "");
-      if (!email || !password) throw new Error("Enter your admin email and password.");
+      if (!email) throw new Error("Admin login is missing its server auth email setting.");
+      if (!password) throw new Error("Enter the admin password.");
       const { error } = await db.auth.signInWithPassword({ email, password });
       if (error) throw error;
       await verifySupabaseAdminAccess();
@@ -2533,10 +2537,7 @@ async function adminLogin(event) {
       sessionStorage.removeItem("aes_admin_password");
       state.adminPassword = "";
     } else {
-      state.adminPassword = String(formData.get("password") || "");
-      assertAdmin();
-      sessionStorage.setItem("aes_admin_password", state.adminPassword);
-      sessionStorage.removeItem("aes_admin_verified");
+      throw new Error("Secure admin login requires Supabase Auth.");
     }
     await loadAdmin();
     el("adminLogin")?.classList.add("admin-authenticated");
@@ -2560,9 +2561,10 @@ function renderAdminLoginMode() {
   const emailWrap = el("adminEmailWrap");
   if (!emailWrap) return;
   const supabaseMode = usesSupabaseAdminAuth();
-  emailWrap.classList.toggle("hidden", !supabaseMode);
+  const sharedPasswordMode = usesSharedPasswordAdminAuth();
+  emailWrap.classList.toggle("hidden", !supabaseMode || sharedPasswordMode);
   const emailInput = emailWrap.querySelector("input");
-  if (emailInput) emailInput.required = supabaseMode;
+  if (emailInput) emailInput.required = supabaseMode && !sharedPasswordMode;
   const passwordLabel = el("adminLogin")?.querySelector("label:not(#adminEmailWrap)");
   if (passwordLabel) passwordLabel.childNodes[0].textContent = supabaseMode ? "Admin password" : "Admin password";
 }
