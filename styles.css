@@ -7406,8 +7406,8 @@ button:disabled,
 
 .intro {
   align-items: center;
-  gap: clamp(18px, 5vw, 56px);
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+  gap: clamp(20px, 4vw, 44px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .intro-copy {
@@ -7429,9 +7429,9 @@ button:disabled,
 
 .photo-story {
   align-self: center;
-  justify-self: end;
-  width: min(340px, 100%);
-  max-width: 340px;
+  justify-self: stretch;
+  width: 100%;
+  max-width: none;
   min-height: 0;
   height: auto;
   aspect-ratio: 16 / 9;
@@ -7448,13 +7448,7 @@ button:disabled,
 }
 
 .photo-story::after {
-  inset: 0;
-  background:
-    radial-gradient(circle at 16% 18%, rgba(255, 248, 229, .08), transparent 34%),
-    linear-gradient(90deg, rgba(255, 250, 241, .18), transparent 18%, transparent 82%, rgba(255, 250, 241, .14)),
-    var(--paper-grain);
-  opacity: .5;
-  pointer-events: none;
+  display: none;
 }
 
 .photo-story .slides,
@@ -7469,7 +7463,7 @@ button:disabled,
   min-height: 0;
   object-fit: contain;
   object-position: center;
-  filter: sepia(.04) saturate(.96) contrast(1.01) brightness(1.01);
+  filter: none;
 }
 
 .slideshow-controls {
@@ -7600,8 +7594,8 @@ button:disabled,
 
   .intro {
     grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
-    padding-bottom: 10px;
+    gap: 12px;
+    padding-bottom: 14px;
   }
 
   .intro-copy {
@@ -7618,9 +7612,10 @@ button:disabled,
 
   .photo-story {
     justify-self: start;
-    width: min(280px, 100%);
-    max-width: 280px;
+    width: 100vw;
+    max-width: none;
     aspect-ratio: 16 / 9;
+    margin-inline: calc(50% - 50vw);
     min-height: 0;
   }
 
